@@ -5,14 +5,14 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { DoodleCanvas } from '@/components/DoodleCanvas';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Keep Card for Dialog
+import { CardDescription } from '@/components/ui/card'; 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TutorialList } from '@/components/TutorialList';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser, Settings, PencilLine, XIcon } from 'lucide-react';
+import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser, Settings, PencilLine } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -242,7 +242,7 @@ export function MagicCanvasSection() {
                 <Button
                   onClick={handleProcessCanvas}
                   disabled={isLoading}
-                  variant="default" // Changed from outline to make gradient wrapper work
+                  variant="default" 
                   size="icon"
                   className="rounded-full w-14 h-14 border-0 bg-primary hover:bg-primary/90 text-primary-foreground data-[disabled]:opacity-50 data-[disabled]:pointer-events-none"
                   aria-label={mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}
@@ -257,17 +257,17 @@ export function MagicCanvasSection() {
           </Tooltip>
           
           <Popover>
-            <PopoverTrigger asChild>
-              <Tooltip>
-                <TooltipTrigger asChild>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
                   <Button variant="outline" size="icon" aria-label="Canvas Settings" className="rounded-full shadow-lg w-14 h-14">
                     <Settings className="h-6 w-6" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left"><p>Settings</p></TooltipContent>
-              </Tooltip>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-4 space-y-4 mb-2" side="top" align="end">
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="left"><p>Settings</p></TooltipContent>
+            </Tooltip>
+            <PopoverContent className="w-auto p-4 space-y-4" side="top" align="end">
               {mode === 'doodle' && (
                 <div className="space-y-2">
                   <Label htmlFor="style-prompt-popover-fab" className="flex items-center gap-1 text-sm font-medium">
@@ -361,7 +361,7 @@ export function MagicCanvasSection() {
         <Dialog open={isOutputDialogOpen} onOpenChange={(isOpen) => {
             setIsOutputDialogOpen(isOpen);
             if (!isOpen) {
-                resetLocalOutputs(); // Clear outputs when dialog is closed
+                resetLocalOutputs(); 
             }
         }}>
           <DialogContent className="sm:max-w-lg md:max-w-2xl max-h-[80vh] flex flex-col">
