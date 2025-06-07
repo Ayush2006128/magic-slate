@@ -56,6 +56,10 @@ export function MagicCanvasSection() {
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode);
     resetOutputs();
+    toast({
+      title: 'Mode Switched',
+      description: `Switched to ${newMode === 'doodle' ? 'Doodle' : 'Equation'} Mode.`,
+    });
   };
   
   const handleCanvasClearRequest = () => {
@@ -158,11 +162,6 @@ export function MagicCanvasSection() {
       toast({ title: 'Download Started', description: 'Your artwork is being downloaded.' });
     }
   };
-
-  const getTitle = () => mode === 'doodle' ? 'AI Doodle Enhancer' : 'Handwritten Equation Solver';
-  const getDescription = () => mode === 'doodle' 
-    ? 'Draw a simple doodle, optionally describe a style, and let AI transform it into artwork.'
-    : 'Write a mathematical equation on the canvas and let AI solve it for you.';
   
   useEffect(() => {
     resetOutputs();
@@ -172,15 +171,7 @@ export function MagicCanvasSection() {
     <TooltipProvider>
       <div className="space-y-6 p-2 md:p-4 h-full flex flex-col">
         <Card className="shadow-xl flex flex-col flex-grow">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl flex items-center gap-2">
-              {mode === 'doodle' ? <PaletteIcon className="h-7 w-7 text-primary" /> : <Calculator className="h-7 w-7 text-primary" />}
-              {getTitle()}
-            </CardTitle>
-            <CardDescription>{getDescription()}</CardDescription>
-          </CardHeader>
-
-          <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-t">
+          <div className="flex items-center justify-between gap-4 px-6 py-4 border-b">
               <RadioGroup value={mode} onValueChange={(value) => handleModeChange(value as Mode)} className="flex gap-2 items-center">
                 <Label className="text-sm font-medium hidden sm:block">Mode:</Label>
                 <div className="flex items-center space-x-1">
@@ -286,7 +277,7 @@ export function MagicCanvasSection() {
               </div>
           </div>
           
-          <CardContent className="p-6 pt-0 flex flex-col flex-grow">
+          <CardContent className="p-6 pt-6 flex flex-col flex-grow">
             <div className="flex-grow relative border border-input rounded-lg shadow-inner overflow-hidden min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
               <DoodleCanvas
                 getCanvasDataUrl={setGetCanvasDataUrl}
@@ -386,3 +377,4 @@ export function MagicCanvasSection() {
     </TooltipProvider>
   );
 }
+    
