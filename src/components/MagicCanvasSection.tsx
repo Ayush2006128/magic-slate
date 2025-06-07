@@ -289,14 +289,17 @@ export function MagicCanvasSection() {
                             <p>Red</p>
                           </TooltipContent>
                         </Tooltip>
-                        <Input
-                          id="color-picker-popover"
-                          type="color"
-                          value={drawingColor}
-                          onChange={(e) => setDrawingColor(e.target.value)}
-                          className="h-9 w-12 cursor-pointer rounded-md border-input p-1"
-                          aria-label="Select custom drawing color"
-                        />
+                        <div className="flex items-center h-9 rounded-md border border-input px-1 bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                          <Input
+                            id="color-picker-popover"
+                            type="color"
+                            value={drawingColor}
+                            onChange={(e) => setDrawingColor(e.target.value)}
+                            className="h-full w-9 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-0 focus-visible:ring-offset-0"
+                            aria-label="Select custom drawing color"
+                          />
+                          <PaletteIcon size={16} className="text-muted-foreground ml-1" />
+                        </div>
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -422,4 +425,6 @@ export function MagicCanvasSection() {
     </TooltipProvider>
   );
 }
+    
+
     
