@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
@@ -12,7 +13,7 @@ interface DoodleCanvasProps {
   onCanvasChange?: (dataUrl: string) => void;
   getCanvasDataUrl?: (callback: () => string | null) => void;
   clearCanvasSignal?: boolean;
-  onClear?: () => void;
+  onClear?: () => void; // Callback after canvas is cleared internally
 }
 
 export function DoodleCanvas({
@@ -21,7 +22,7 @@ export function DoodleCanvas({
   onCanvasChange,
   getCanvasDataUrl,
   clearCanvasSignal,
-  onClear
+  onClear // Renamed from onCanvasCleared to onClear to match usage
 }: DoodleCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -35,33 +36,37 @@ export function DoodleCanvas({
 
   const initializeCanvas = useCallback(() => {
     const context = getContext();
-    if (context) {
+    if (context && canvasRef.current) {
       context.fillStyle = '#FFFFFF'; // Set background to white
-      context.fillRect(0, 0, width, height);
-      if (onCanvasChange && canvasRef.current) {
+      context.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      if (onCanvasChange) {
         onCanvasChange(canvasRef.current.toDataURL('image/png'));
       }
     }
-  }, [getContext, height, onCanvasChange, width]);
+  }, [getContext, onCanvasChange]);
   
   useEffect(() => {
-    initializeCanvas();
-  }, [initializeCanvas]);
+    // Ensure canvas dimensions are set before initializing
+    if (canvasRef.current) {
+        canvasRef.current.width = width;
+        canvasRef.current.height = height;
+        initializeCanvas();
+    }
+  }, [width, height, initializeCanvas]);
+
 
   useEffect(() => {
     if (getCanvasDataUrl) {
       getCanvasDataUrl(() => {
         const canvas = canvasRef.current;
         if (canvas) {
-          // Ensure background is white before exporting if canvas is empty
           const context = getContext();
           if(context){
-            // Check if canvas is blank (all white or transparent)
             const pixelBuffer = new Uint32Array(
               context.getImageData(0, 0, canvas.width, canvas.height).data.buffer
             );
-            const isBlank = !pixelBuffer.some(color => color !== 0 && color !== 0xffffffff);
-            if(isBlank) {
+            const isEffectivelyBlank = !pixelBuffer.some(pxColor => pxColor !== 0 && pxColor !== 0xffffffff); // 0 is transparent, 0xffffffff is white
+            if(isEffectivelyBlank) {
               context.fillStyle = '#FFFFFF';
               context.fillRect(0, 0, canvas.width, canvas.height);
             }
@@ -73,19 +78,26 @@ export function DoodleCanvas({
     }
   }, [getCanvasDataUrl, getContext]);
 
-  useEffect(() => {
-    if (clearCanvasSignal && onClear) {
-      const context = getContext();
-      if (context) {
-        context.clearRect(0, 0, width, height);
-        initializeCanvas(); 
-      }
-      onClear(); 
+  const clearInternalCanvas = useCallback(() => {
+    const context = getContext();
+    if (context && canvasRef.current) {
+      context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      initializeCanvas();
     }
-  }, [clearCanvasSignal, getContext, height, initializeCanvas, onClear, width]);
+  }, [getContext, initializeCanvas]);
+
+  useEffect(() => {
+    if (clearCanvasSignal) {
+      clearInternalCanvas();
+      if (onClear) {
+        onClear(); // Signal back that clearing is done
+      }
+    }
+  }, [clearCanvasSignal, onClear, clearInternalCanvas]);
 
 
   const startDrawing = useCallback((event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    event.preventDefault(); // Prevents page scrolling on touch devices
     const context = getContext();
     if (context) {
       const { offsetX, offsetY } = getCoordinates(event);
@@ -96,6 +108,7 @@ export function DoodleCanvas({
   }, [getContext]);
 
   const draw = useCallback((event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
     if (!isDrawing) return;
     const context = getContext();
     if (context) {
@@ -109,7 +122,8 @@ export function DoodleCanvas({
     }
   }, [isDrawing, color, lineWidth, getContext]);
 
-  const stopDrawing = useCallback(() => {
+  const stopDrawing = useCallback((event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
     const context = getContext();
     if (context) {
       context.closePath();
@@ -124,32 +138,38 @@ export function DoodleCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return { offsetX: 0, offsetY: 0 };
     const rect = canvas.getBoundingClientRect();
-    if ('touches' in event) { // Touch event
-      return {
-        offsetX: event.touches[0].clientX - rect.left,
-        offsetY: event.touches[0].clientY - rect.top
-      };
+    let clientX, clientY;
+    if ('touches' in event && event.touches.length > 0) { // Touch event
+      clientX = event.touches[0].clientX;
+      clientY = event.touches[0].clientY;
+    } else if ('clientX' in event) { // Mouse event
+      clientX = event.clientX;
+      clientY = event.clientY;
+    } else {
+        return {offsetX: 0, offsetY: 0};
     }
-    // Mouse event
+    
     return {
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top
+      offsetX: clientX - rect.left,
+      offsetY: clientY - rect.top
     };
   };
 
-  const handleClearCanvas = () => {
-    const context = getContext();
-    if (context) {
-      context.clearRect(0, 0, width, height);
-      initializeCanvas(); // Re-initialize with white background
-    }
+  // The external clear button is now in MagicCanvasSection, so this internal button can be removed
+  // if desired, or kept for finer control within the canvas component itself.
+  // For now, let's keep it as it's part of the original DoodleCanvas component.
+  // The `handleCanvasClearRequest` in `MagicCanvasSection` will trigger the `clearCanvasSignal`.
+  const handleInternalClearButton = () => {
+    clearInternalCanvas();
+    // If there's an external onClear, it will be called via the signal effect
   };
 
+
   return (
-    <div className="flex flex-col items-center space-y-4">
-      <div className="flex flex-wrap gap-4 items-center justify-center p-2 bg-muted rounded-lg shadow">
+    <div className="flex flex-col items-center space-y-4 w-full">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 items-center justify-center p-2 bg-muted rounded-lg shadow w-full max-w-md">
         <div className="flex items-center gap-2">
-          <Label htmlFor="color-picker" className="flex items-center gap-1">
+          <Label htmlFor="color-picker" className="flex items-center gap-1 cursor-pointer">
             <Palette size={20} className="text-primary" /> Color:
           </Label>
           <Input
@@ -157,12 +177,12 @@ export function DoodleCanvas({
             type="color"
             value={color}
             onChange={(e) => setColor(e.target.value)}
-            className="w-14 h-10 p-1 rounded-md"
+            className="w-12 h-9 p-0.5 rounded-md border-input"
             aria-label="Select drawing color"
           />
         </div>
         <div className="flex items-center gap-2">
-          <Label htmlFor="line-width" className="flex items-center gap-1">
+          <Label htmlFor="line-width" className="flex items-center gap-1 cursor-pointer">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil-line text-primary"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/><path d="m15 5 3 3"/></svg>
             Size:
           </Label>
@@ -173,19 +193,22 @@ export function DoodleCanvas({
             max="20"
             value={lineWidth}
             onChange={(e) => setLineWidth(Number(e.target.value))}
-            className="w-24 accent-primary"
+            className="w-20 md:w-24 accent-primary cursor-pointer"
             aria-label="Select line width"
           />
-          <span className="text-sm w-6 text-center">{lineWidth}</span>
+          <span className="text-sm w-5 text-center">{lineWidth}</span>
         </div>
-        <Button variant="outline" onClick={handleClearCanvas} className="gap-2">
-          <Eraser size={18} /> Clear
+        {/* This button is now redundant if MagicCanvasSection has its own global clear button.
+            However, keeping it for now as part of the canvas's own controls.
+            The `clearCanvasSignal` prop handles external clearing.
+        */}
+        <Button variant="outline" size="sm" onClick={handleInternalClearButton} className="gap-1.5 px-3 py-1.5 h-auto text-sm">
+          <Eraser size={16} /> Clear Drawing Area
         </Button>
       </div>
       <canvas
         ref={canvasRef}
-        width={width}
-        height={height}
+        // width and height are set in useEffect to ensure canvasRef is current
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={stopDrawing}
@@ -193,9 +216,11 @@ export function DoodleCanvas({
         onTouchStart={startDrawing}
         onTouchMove={draw}
         onTouchEnd={stopDrawing}
-        className="border border-primary rounded-lg shadow-md bg-white cursor-crosshair touch-none"
-        aria-label="Doodle canvas"
+        className="border border-primary rounded-lg shadow-md bg-white cursor-crosshair touch-none max-w-full"
+        style={{ width: `${width}px`, height: `${height}px` }}
+        aria-label="Drawing and Equation Canvas"
       />
     </div>
   );
 }
+
