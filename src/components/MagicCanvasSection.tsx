@@ -5,24 +5,56 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { DoodleCanvas } from '@/components/DoodleCanvas';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TutorialList } from '@/components/TutorialList';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser, Settings, PencilLine } from 'lucide-react';
+import {
+  Download,
+  Sparkles,
+  Calculator,
+  Palette as PaletteIcon,
+  Eraser,
+  Settings,
+  PencilLine,
+} from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-
-import type { EnhanceDoodleInput, EnhanceDoodleOutput } from '@/ai/flows/enhance-doodle';
+import type {
+  EnhanceDoodleInput,
+  EnhanceDoodleOutput,
+} from '@/ai/flows/enhance-doodle';
 import { enhanceDoodle } from '@/ai/flows/enhance-doodle';
-import type { SolveEquationInput, SolveEquationOutput } from '@/ai/flows/solve-equation';
+import type {
+  SolveEquationInput,
+  SolveEquationOutput,
+} from '@/ai/flows/solve-equation';
 import { solveEquation } from '@/ai/flows/solve-equation';
-import type { RecommendTutorialsInput, RecommendTutorialsOutput } from '@/ai/flows/recommend-tutorials';
+import type {
+  RecommendTutorialsInput,
+  RecommendTutorialsOutput,
+} from '@/ai/flows/recommend-tutorials';
 import { recommendTutorials } from '@/ai/flows/recommend-tutorials';
 
 type Mode = 'doodle' | 'equation';
@@ -30,14 +62,18 @@ type Mode = 'doodle' | 'equation';
 const QUICK_COLOR_BLACK = '#000000';
 const QUICK_COLOR_RED = '#ff0000';
 
-export function MagicCanvasSection() {
+export function MagicCanvasSection(): JSX.Element {
   const [mode, setMode] = useState<Mode>('doodle');
   const [prompt, setPrompt] = useState('');
-  
-  const [currentEnhancedArtworkUri, setCurrentEnhancedArtworkUri] = useState<string | null>(null);
-  const [currentOriginalDoodleDataUrl, setCurrentOriginalDoodleDataUrl] = useState<string | null>(null);
-  const [currentSolution, setCurrentSolution] = useState<SolveEquationOutput | null>(null);
-  const [currentTutorials, setCurrentTutorials] = useState<RecommendTutorialsOutput | null>(null);
+
+  const [currentEnhancedArtworkUri, setCurrentEnhancedArtworkUri] =
+    useState<string | null>(null);
+  const [currentOriginalDoodleDataUrl, setCurrentOriginalDoodleDataUrl] =
+    useState<string | null>(null);
+  const [currentSolution, setCurrentSolution] =
+    useState<SolveEquationOutput | null>(null);
+  const [currentTutorials, setCurrentTutorials] =
+    useState<RecommendTutorialsOutput | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [clearCanvasSignal, setClearCanvasSignal] = useState(false);
@@ -46,8 +82,6 @@ export function MagicCanvasSection() {
   const [drawingLineWidth, setDrawingLineWidth] = useState(5);
 
   const [isOutputDialogOpen, setIsOutputDialogOpen] = useState(false);
-  const [outputDialogTitle, setOutputDialogTitle] = useState('');
-
 
   const { toast } = useToast();
   const getCanvasDataUrlRef = useRef<() => string | null>(null);
@@ -65,13 +99,15 @@ export function MagicCanvasSection() {
 
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode);
-    resetLocalOutputs(); 
+    resetLocalOutputs();
     toast({
       title: 'Mode Switched',
-      description: `Switched to ${newMode === 'doodle' ? 'Doodle' : 'Equation'} Mode.`,
+      description: `Switched to ${
+        newMode === 'doodle' ? 'Doodle' : 'Equation'
+      } Mode.`,
     });
   };
-  
+
   const handleCanvasClearRequest = () => {
     setClearCanvasSignal(true);
   };
@@ -79,57 +115,89 @@ export function MagicCanvasSection() {
   const onCanvasActuallyCleared = () => {
     resetLocalOutputs();
     setClearCanvasSignal(false);
-     toast({
+    toast({
       title: 'Canvas Cleared',
       description: 'The drawing area is now empty.',
     });
   };
 
   const handleProcessCanvas = async () => {
-    const canvasDataUri = getCanvasDataUrlRef.current ? getCanvasDataUrlRef.current() : null;
+    const canvasDataUri = getCanvasDataUrlRef.current
+      ? getCanvasDataUrlRef.current()
+      : null;
 
     if (!canvasDataUri) {
-      toast({ title: 'Error', description: 'Could not get canvas data. Please draw something.', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: 'Could not get canvas data. Please draw something.',
+        variant: 'destructive',
+      });
       return;
     }
-    
+
     const img = new window.Image();
     img.src = canvasDataUri;
     try {
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = () => reject(new Error('Image load error for blank check'));
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () =>
+          reject(new Error('Image load error for blank check'));
       });
     } catch (error) {
-        toast({ title: 'Error', description: 'Could not load image from canvas for validation.', variant: 'destructive' });
-        return;
+      toast({
+        title: 'Error',
+        description:
+          'Could not load image from canvas for validation.',
+        variant: 'destructive',
+      });
+      return;
     }
 
     const tempCanvas = document.createElement('canvas');
-    if (img.width === 0 || img.height === 0) { 
-        toast({ title: 'Empty Canvas', description: 'Please draw or write something on the canvas.', variant: 'destructive' });
-        return;
+    if (img.width === 0 || img.height === 0) {
+      toast({
+        title: 'Empty Canvas',
+        description: 'Please draw or write something on the canvas.',
+        variant: 'destructive',
+      });
+      return;
     }
     tempCanvas.width = img.width;
     tempCanvas.height = img.height;
     const ctx = tempCanvas.getContext('2d');
     if (!ctx) {
-        toast({ title: 'Error', description: 'Canvas context error for validation.', variant: 'destructive' });
-        return;
+      toast({
+        title: 'Error',
+        description: 'Canvas context error for validation.',
+        variant: 'destructive',
+      });
+      return;
     }
     ctx.drawImage(img, 0, 0);
-    const imageData = ctx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+    const imageData = ctx.getImageData(
+      0,
+      0,
+      tempCanvas.width,
+      tempCanvas.height
+    );
     const { data } = imageData;
     let isBlank = true;
     for (let i = 0; i < data.length; i += 4) {
-        if (!(data[i] === 255 && data[i+1] === 255 && data[i+2] === 255 && data[i+3] === 255) && data[i+3] !== 0) {
-             isBlank = false;
-            break;
-        }
+      if (
+        !(data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255 && data[i+3] === 255) && // Not opaque white
+        data[i + 3] !== 0 // Not fully transparent
+      ) {
+        isBlank = false;
+        break;
+      }
     }
 
     if (isBlank) {
-      toast({ title: 'Empty Canvas', description: 'Please draw or write something on the canvas.', variant: 'destructive' });
+      toast({
+        title: 'Empty Canvas',
+        description: 'Please draw or write something on the canvas.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -141,32 +209,48 @@ export function MagicCanvasSection() {
       let tutorialsOutput: RecommendTutorialsOutput | null = null;
       if (mode === 'doodle') {
         const currentPrompt = prompt.trim() || 'simple doodle';
-        const enhanceInput: EnhanceDoodleInput = { doodleDataUri: canvasDataUri, prompt: currentPrompt };
+        const enhanceInput: EnhanceDoodleInput = {
+          doodleDataUri: canvasDataUri,
+          prompt: currentPrompt,
+        };
         const enhanceOutput = await enhanceDoodle(enhanceInput);
         setCurrentEnhancedArtworkUri(enhanceOutput.enhancedArtworkDataUri);
-        setOutputDialogTitle('Enhanced Artwork');
-        toast({ title: 'Doodle Enhanced!', description: 'Your artwork is ready.' });
-        
-        const recommendInput: RecommendTutorialsInput = { query: currentPrompt };
-        tutorialsOutput = await recommendTutorials(recommendInput);
+        toast({
+          title: 'Doodle Enhanced!',
+          description: 'Your artwork is ready.',
+        });
 
+        const recommendInput: RecommendTutorialsInput = {
+          query: currentPrompt,
+        };
+        tutorialsOutput = await recommendTutorials(recommendInput);
       } else if (mode === 'equation') {
-        const solveInput: SolveEquationInput = { equationImageDataUri: canvasDataUri };
+        const solveInput: SolveEquationInput = {
+          equationImageDataUri: canvasDataUri,
+        };
         const solveOutput = await solveEquation(solveInput);
         setCurrentSolution(solveOutput);
-        setOutputDialogTitle('Equation Solved');
-        toast({ title: 'Equation Processed!', description: 'The solution is ready.' });
-        
-        const tutorialQuery = solveOutput.recognizedEquationText || "mathematical equation help";
+        toast({
+          title: 'Equation Processed!',
+          description: 'The solution is ready.',
+        });
+
+        const tutorialQuery =
+          solveOutput.recognizedEquationText || 'mathematical equation help';
         const recommendInput: RecommendTutorialsInput = { query: tutorialQuery };
         tutorialsOutput = await recommendTutorials(recommendInput);
       }
       setCurrentTutorials(tutorialsOutput);
       setIsOutputDialogOpen(true);
-
     } catch (error) {
       console.error('Error processing canvas:', error);
-      toast({ title: 'Error', description: `Could not process the canvas content. Please try again. ${error instanceof Error ? error.message : ''}`, variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: `Could not process the canvas content. Please try again. ${
+          error instanceof Error ? error.message : ''
+        }`,
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -180,10 +264,13 @@ export function MagicCanvasSection() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast({ title: 'Download Started', description: 'Your artwork is being downloaded.' });
+      toast({
+        title: 'Download Started',
+        description: 'Your artwork is being downloaded.',
+      });
     }
   };
-  
+
   useEffect(() => {
     resetLocalOutputs();
   }, [mode]);
@@ -193,14 +280,28 @@ export function MagicCanvasSection() {
       <div className="relative w-full h-full flex flex-col overflow-hidden">
         {/* Mode Selector - Top Bar */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 p-2 bg-background/80 backdrop-blur-sm shadow-sm rounded-b-lg z-20">
-          <RadioGroup value={mode} onValueChange={(value) => handleModeChange(value as Mode)} className="flex gap-2 items-center">
+          <RadioGroup
+            value={mode}
+            onValueChange={(value) => handleModeChange(value as Mode)}
+            className="flex gap-2 items-center"
+          >
             <div className="flex items-center space-x-1">
               <RadioGroupItem value="doodle" id="r-doodle-fab" />
-              <Label htmlFor="r-doodle-fab" className="text-sm flex items-center gap-1 cursor-pointer"><PaletteIcon size={16}/> Doodle</Label>
+              <Label
+                htmlFor="r-doodle-fab"
+                className="text-sm flex items-center gap-1 cursor-pointer"
+              >
+                <PaletteIcon size={16} /> Doodle
+              </Label>
             </div>
             <div className="flex items-center space-x-1">
               <RadioGroupItem value="equation" id="r-equation-fab" />
-              <Label htmlFor="r-equation-fab" className="text-sm flex items-center gap-1 cursor-pointer"><Calculator size={16}/> Equation</Label>
+              <Label
+                htmlFor="r-equation-fab"
+                className="text-sm flex items-center gap-1 cursor-pointer"
+              >
+                <Calculator size={16} /> Equation
+              </Label>
             </div>
           </RadioGroup>
         </div>
@@ -237,20 +338,34 @@ export function MagicCanvasSection() {
               <p>Clear Canvas</p>
             </TooltipContent>
           </Tooltip>
-          
+
           <Tooltip>
-            <TooltipTrigger asChild>
+             <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
-                   <Button variant="outline" size="icon" aria-label="Canvas Settings" className="rounded-full shadow-lg w-14 h-14">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Canvas Settings"
+                    className="rounded-full shadow-lg w-14 h-14"
+                  >
                     <Settings className="h-6 w-6" />
                   </Button>
                 </PopoverTrigger>
             </TooltipTrigger>
-            <TooltipContent side="left"><p>Settings</p></TooltipContent>
-             <PopoverContent className="w-auto p-4 space-y-4" side="top" align="end">
+            <TooltipContent side="left">
+              <p>Settings</p>
+            </TooltipContent>
+            <PopoverContent
+              className="w-auto p-4 space-y-4"
+              side="top"
+              align="end"
+            >
               {mode === 'doodle' && (
                 <div className="space-y-2">
-                  <Label htmlFor="style-prompt-popover-fab" className="flex items-center gap-1 text-sm font-medium">
+                  <Label
+                    htmlFor="style-prompt-popover-fab"
+                    className="flex items-center gap-1 text-sm font-medium"
+                  >
                     <Sparkles size={16} className="text-primary" /> Artwork Style
                   </Label>
                   <Input
@@ -262,11 +377,16 @@ export function MagicCanvasSection() {
                     className="w-full text-sm"
                     aria-label="Enter artwork style prompt"
                   />
-                  <p className="text-xs text-muted-foreground">Defaults to "simple doodle" if empty.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Defaults to "simple doodle" if empty.
+                  </p>
                 </div>
               )}
-               <div className="space-y-2">
-                <Label htmlFor="color-picker-popover-fab" className="flex items-center gap-1 text-sm font-medium">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="color-picker-popover-fab"
+                  className="flex items-center gap-1 text-sm font-medium"
+                >
                   <PaletteIcon size={16} className="text-primary" /> Color
                 </Label>
                 <div className="flex items-center gap-2">
@@ -276,31 +396,37 @@ export function MagicCanvasSection() {
                         variant="outline"
                         size="icon"
                         className={cn(
-                          "h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary",
-                          drawingColor.toLowerCase() === QUICK_COLOR_BLACK && "ring-2 ring-primary ring-offset-2"
+                          'h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary',
+                          drawingColor.toLowerCase() === QUICK_COLOR_BLACK &&
+                            'ring-2 ring-primary ring-offset-2'
                         )}
                         style={{ backgroundColor: QUICK_COLOR_BLACK }}
                         onClick={() => setDrawingColor(QUICK_COLOR_BLACK)}
                         aria-label="Select black color"
                       />
                     </TooltipTrigger>
-                    <TooltipContent><p>Black</p></TooltipContent>
+                    <TooltipContent>
+                      <p>Black</p>
+                    </TooltipContent>
                   </Tooltip>
-                   <Tooltip>
+                  <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="outline"
                         size="icon"
                         className={cn(
-                          "h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary",
-                          drawingColor.toLowerCase() === QUICK_COLOR_RED && "ring-2 ring-primary ring-offset-2"
+                          'h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary',
+                          drawingColor.toLowerCase() === QUICK_COLOR_RED &&
+                            'ring-2 ring-primary ring-offset-2'
                         )}
                         style={{ backgroundColor: QUICK_COLOR_RED }}
                         onClick={() => setDrawingColor(QUICK_COLOR_RED)}
                         aria-label="Select red color"
                       />
                     </TooltipTrigger>
-                    <TooltipContent><p>Red</p></TooltipContent>
+                    <TooltipContent>
+                      <p>Red</p>
+                    </TooltipContent>
                   </Tooltip>
                   <div className="flex items-center h-9 rounded-md border border-input px-1 bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
                     <Input
@@ -311,12 +437,18 @@ export function MagicCanvasSection() {
                       className="h-full w-9 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-0 focus-visible:ring-offset-0"
                       aria-label="Select custom drawing color"
                     />
-                    <PaletteIcon size={16} className="text-muted-foreground ml-1" />
+                    <PaletteIcon
+                      size={16}
+                      className="text-muted-foreground ml-1"
+                    />
                   </div>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="line-width-popover-fab" className="flex items-center gap-1 text-sm font-medium">
+                <Label
+                  htmlFor="line-width-popover-fab"
+                  className="flex items-center gap-1 text-sm font-medium"
+                >
                   <PencilLine size={16} className="text-primary" /> Brush Size
                 </Label>
                 <div className="flex items-center gap-2">
@@ -326,11 +458,15 @@ export function MagicCanvasSection() {
                     min="1"
                     max="50"
                     value={drawingLineWidth}
-                    onChange={(e) => setDrawingLineWidth(Number(e.target.value))}
+                    onChange={(e) =>
+                      setDrawingLineWidth(Number(e.target.value))
+                    }
                     className="w-full accent-primary cursor-pointer"
                     aria-label="Select line width"
                   />
-                  <span className="text-sm w-8 text-center tabular-nums">{drawingLineWidth}</span>
+                  <span className="text-sm w-8 text-center tabular-nums">
+                    {drawingLineWidth}
+                  </span>
                 </div>
               </div>
             </PopoverContent>
@@ -338,97 +474,136 @@ export function MagicCanvasSection() {
 
           <Tooltip>
             <TooltipTrigger asChild>
-               <div className="p-1 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg">
+              <div className="p-1 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg">
                 <Button
                   onClick={handleProcessCanvas}
                   disabled={isLoading}
-                  variant="default" 
+                  variant="default"
                   size="icon"
                   className="rounded-full w-14 h-14 border-0 bg-primary hover:bg-primary/90 text-primary-foreground data-[disabled]:opacity-50 data-[disabled]:pointer-events-none"
-                  aria-label={mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}
+                  aria-label={
+                    mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'
+                  }
                 >
-                  {isLoading ? <LoadingSpinner size={24} /> : (mode === 'doodle' ? <Sparkles size={24} /> : <Calculator size={24} />)}
+                  {isLoading ? (
+                    <LoadingSpinner size={24} />
+                  ) : mode === 'doodle' ? (
+                    <Sparkles size={24} />
+                  ) : (
+                    <Calculator size={24} />
+                  )}
                 </Button>
               </div>
             </TooltipTrigger>
             <TooltipContent side="left">
-              <p>{mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}</p>
+              <p>
+                {mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}
+              </p>
             </TooltipContent>
           </Tooltip>
         </div>
 
         {/* Output Dialog */}
-        <Dialog open={isOutputDialogOpen} onOpenChange={(isOpen) => {
+        <Dialog
+          open={isOutputDialogOpen}
+          onOpenChange={(isOpen) => {
             setIsOutputDialogOpen(isOpen);
             if (!isOpen) {
-                resetLocalOutputs(); 
+              resetLocalOutputs();
             }
-        }}>
+          }}
+        >
           <DialogContent className="sm:max-w-lg md:max-w-2xl max-h-[80vh] flex flex-col">
             <DialogHeader>
-              <DialogTitle className="font-headline">{outputDialogTitle}</DialogTitle>
+              <DialogTitle className="font-headline">
+                {mode === 'doodle' ? 'Enhanced Artwork' : 'Equation Solved'}
+              </DialogTitle>
             </DialogHeader>
             <div className="flex-grow overflow-y-auto space-y-4 p-1">
-              {isLoading && (
-                  <div className="text-center py-10">
-                    <LoadingSpinner size={48} />
-                    <p className="text-muted-foreground mt-2">Processing...</p>
-                  </div>
-              )}
-              {!isLoading && mode === 'doodle' && currentEnhancedArtworkUri && (
-                <div className="space-y-4">
-                  <DialogDescription>Your AI-enhanced doodle:</DialogDescription>
-                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-around">
-                    {currentOriginalDoodleDataUrl && (
-                      <div className="text-center">
-                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Original</h3>
-                        <Image
-                          src={currentOriginalDoodleDataUrl}
-                          alt="Original Doodle"
-                          width={200}
-                          height={125}
-                          className="rounded-lg border shadow-md bg-white"
-                          data-ai-hint="sketch drawing"
-                        />
-                      </div>
-                    )}
-                    <div className="text-center">
-                      <h3 className="text-sm font-medium text-primary mb-1">Enhanced</h3>
-                      <Image
-                        src={currentEnhancedArtworkUri}
-                        alt="Enhanced Artwork"
-                        width={200}
-                        height={125}
-                        className="rounded-lg border-2 border-primary shadow-xl bg-white"
-                        data-ai-hint="digital art"
-                      />
-                    </div>
-                  </div>
-                  <Button onClick={handleDownloadArtwork} variant="outline" className="w-full gap-2 mt-2">
-                    <Download size={18} /> Download Artwork
-                  </Button>
+              {isLoading && !currentEnhancedArtworkUri && !currentSolution && ( // Show loading only if no content is ready
+                <div className="text-center py-10">
+                  <LoadingSpinner size={48} />
+                  <p className="text-muted-foreground mt-2">Processing...</p>
                 </div>
               )}
+              {!isLoading && 
+                mode === 'doodle' &&
+                currentEnhancedArtworkUri && (
+                  <div className="space-y-4">
+                    <DialogDescription>
+                      Your AI-enhanced doodle:
+                    </DialogDescription>
+                    <div className="flex flex-col sm:flex-row gap-4 items-center justify-around">
+                      {currentOriginalDoodleDataUrl && (
+                        <div className="text-center">
+                          <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                            Original
+                          </h3>
+                          <Image
+                            src={currentOriginalDoodleDataUrl}
+                            alt="Original Doodle"
+                            width={200}
+                            height={125}
+                            className="rounded-lg border shadow-md bg-white"
+                            data-ai-hint="sketch drawing"
+                          />
+                        </div>
+                      )}
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-primary mb-1">
+                          Enhanced
+                        </h3>
+                        <Image
+                          src={currentEnhancedArtworkUri}
+                          alt="Enhanced Artwork"
+                          width={200}
+                          height={125}
+                          className="rounded-lg border-2 border-primary shadow-xl bg-white"
+                          data-ai-hint="digital art"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleDownloadArtwork}
+                      variant="outline"
+                      className="w-full gap-2 mt-2"
+                    >
+                      <Download size={18} /> Download Artwork
+                    </Button>
+                  </div>
+                )}
 
               {!isLoading && mode === 'equation' && currentSolution && (
                 <div className="space-y-4">
                   {currentSolution.recognizedEquationText && (
-                    <DialogDescription>Recognized: <span className="font-mono">{currentSolution.recognizedEquationText}</span></DialogDescription>
+                    <DialogDescription>
+                      Recognized:{' '}
+                      <span className="font-mono">
+                        {currentSolution.recognizedEquationText}
+                      </span>
+                    </DialogDescription>
                   )}
                   <p className="text-lg font-medium text-primary bg-secondary p-3 rounded-md whitespace-pre-wrap">
                     {currentSolution.solution}
                   </p>
                 </div>
               )}
-              
-              <TutorialList tutorials={currentTutorials} isLoading={isLoading && (currentTutorials === null)} />
+
+              <TutorialList
+                tutorials={currentTutorials}
+                isLoading={isLoading && currentTutorials === null} 
+              />
             </div>
             <DialogFooter className="mt-auto pt-4">
-                <Button variant="outline" onClick={() => setIsOutputDialogOpen(false)}>Close</Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsOutputDialogOpen(false)}
+              >
+                Close
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
       </div>
     </TooltipProvider>
   );
