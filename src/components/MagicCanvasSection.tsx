@@ -5,7 +5,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { DoodleCanvas } from '@/components/DoodleCanvas';
 import { Button } from '@/components/ui/button';
-import { CardDescription } from '@/components/ui/card'; 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -193,7 +192,7 @@ export function MagicCanvasSection() {
     <TooltipProvider>
       <div className="relative w-full h-full flex flex-col overflow-hidden">
         {/* Mode Selector - Top Bar */}
-        <div className="p-2 bg-background/80 backdrop-blur-sm shadow-sm z-10 flex justify-center">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 p-2 bg-background/80 backdrop-blur-sm shadow-sm rounded-b-lg z-20">
           <RadioGroup value={mode} onValueChange={(value) => handleModeChange(value as Mode)} className="flex gap-2 items-center">
             <div className="flex items-center space-x-1">
               <RadioGroupItem value="doodle" id="r-doodle-fab" />
@@ -215,6 +214,9 @@ export function MagicCanvasSection() {
             color={drawingColor}
             lineWidth={drawingLineWidth}
           />
+          {isLoading && (
+            <div className="mist-overlay"></div>
+          )}
         </div>
 
         {/* Floating Action Buttons */}
@@ -235,39 +237,17 @@ export function MagicCanvasSection() {
               <p>Clear Canvas</p>
             </TooltipContent>
           </Tooltip>
-
+          
           <Tooltip>
             <TooltipTrigger asChild>
-               <div className="p-1 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg">
-                <Button
-                  onClick={handleProcessCanvas}
-                  disabled={isLoading}
-                  variant="default" 
-                  size="icon"
-                  className="rounded-full w-14 h-14 border-0 bg-primary hover:bg-primary/90 text-primary-foreground data-[disabled]:opacity-50 data-[disabled]:pointer-events-none"
-                  aria-label={mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}
-                >
-                  {isLoading ? <LoadingSpinner size={24} /> : (mode === 'doodle' ? <Sparkles size={24} /> : <Calculator size={24} />)}
-                </Button>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>{mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}</p>
-            </TooltipContent>
-          </Tooltip>
-          
-          <Popover>
-            <Tooltip>
-              <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon" aria-label="Canvas Settings" className="rounded-full shadow-lg w-14 h-14">
+                   <Button variant="outline" size="icon" aria-label="Canvas Settings" className="rounded-full shadow-lg w-14 h-14">
                     <Settings className="h-6 w-6" />
                   </Button>
                 </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="left"><p>Settings</p></TooltipContent>
-            </Tooltip>
-            <PopoverContent className="w-auto p-4 space-y-4" side="top" align="end">
+            </TooltipTrigger>
+            <TooltipContent side="left"><p>Settings</p></TooltipContent>
+             <PopoverContent className="w-auto p-4 space-y-4" side="top" align="end">
               {mode === 'doodle' && (
                 <div className="space-y-2">
                   <Label htmlFor="style-prompt-popover-fab" className="flex items-center gap-1 text-sm font-medium">
@@ -355,6 +335,26 @@ export function MagicCanvasSection() {
               </div>
             </PopoverContent>
           </Popover>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+               <div className="p-1 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg">
+                <Button
+                  onClick={handleProcessCanvas}
+                  disabled={isLoading}
+                  variant="default" 
+                  size="icon"
+                  className="rounded-full w-14 h-14 border-0 bg-primary hover:bg-primary/90 text-primary-foreground data-[disabled]:opacity-50 data-[disabled]:pointer-events-none"
+                  aria-label={mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}
+                >
+                  {isLoading ? <LoadingSpinner size={24} /> : (mode === 'doodle' ? <Sparkles size={24} /> : <Calculator size={24} />)}
+                </Button>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p>{mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Output Dialog */}
@@ -377,7 +377,7 @@ export function MagicCanvasSection() {
               )}
               {!isLoading && mode === 'doodle' && currentEnhancedArtworkUri && (
                 <div className="space-y-4">
-                  <CardDescription>Your AI-enhanced doodle:</CardDescription>
+                  <DialogDescription>Your AI-enhanced doodle:</DialogDescription>
                   <div className="flex flex-col sm:flex-row gap-4 items-center justify-around">
                     {currentOriginalDoodleDataUrl && (
                       <div className="text-center">
@@ -413,7 +413,7 @@ export function MagicCanvasSection() {
               {!isLoading && mode === 'equation' && currentSolution && (
                 <div className="space-y-4">
                   {currentSolution.recognizedEquationText && (
-                    <CardDescription>Recognized: <span className="font-mono">{currentSolution.recognizedEquationText}</span></CardDescription>
+                    <DialogDescription>Recognized: <span className="font-mono">{currentSolution.recognizedEquationText}</span></DialogDescription>
                   )}
                   <p className="text-lg font-medium text-primary bg-secondary p-3 rounded-md whitespace-pre-wrap">
                     {currentSolution.solution}
