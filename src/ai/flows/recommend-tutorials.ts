@@ -22,7 +22,7 @@ const RecommendTutorialsOutputSchema = z.object({
     z.string().describe('The title of the recommended tutorial.')
   ).describe('A list of recommended tutorial titles.'),
   tutorialUrls: z.array(
-    z.string().url().describe('The URL of the recommended tutorial.')
+    z.string().describe('The URL of the recommended tutorial. This should be a valid YouTube URL.')
   ).describe('A list of URLs for the recommended tutorials.'),
 });
 export type RecommendTutorialsOutput = z.infer<typeof RecommendTutorialsOutputSchema>;
