@@ -5,13 +5,14 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { DoodleCanvas } from '@/components/DoodleCanvas';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'; // Keep Card for Dialog
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TutorialList } from '@/components/TutorialList';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser, Settings, PencilLine } from 'lucide-react';
+import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser, Settings, PencilLine, XIcon } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
@@ -33,15 +34,21 @@ const QUICK_COLOR_RED = '#ff0000';
 export function MagicCanvasSection() {
   const [mode, setMode] = useState<Mode>('doodle');
   const [prompt, setPrompt] = useState('');
-  const [enhancedArtwork, setEnhancedArtwork] = useState<EnhanceDoodleOutput | null>(null);
-  const [originalDoodleDataUrl, setOriginalDoodleDataUrl] = useState<string | null>(null);
-  const [solution, setSolution] = useState<SolveEquationOutput | null>(null);
-  const [tutorials, setTutorials] = useState<RecommendTutorialsOutput | null>(null);
+  
+  const [currentEnhancedArtworkUri, setCurrentEnhancedArtworkUri] = useState<string | null>(null);
+  const [currentOriginalDoodleDataUrl, setCurrentOriginalDoodleDataUrl] = useState<string | null>(null);
+  const [currentSolution, setCurrentSolution] = useState<SolveEquationOutput | null>(null);
+  const [currentTutorials, setCurrentTutorials] = useState<RecommendTutorialsOutput | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [clearCanvasSignal, setClearCanvasSignal] = useState(false);
 
   const [drawingColor, setDrawingColor] = useState(QUICK_COLOR_BLACK);
   const [drawingLineWidth, setDrawingLineWidth] = useState(5);
+
+  const [isOutputDialogOpen, setIsOutputDialogOpen] = useState(false);
+  const [outputDialogTitle, setOutputDialogTitle] = useState('');
+
 
   const { toast } = useToast();
   const getCanvasDataUrlRef = useRef<() => string | null>(null);
@@ -50,16 +57,16 @@ export function MagicCanvasSection() {
     getCanvasDataUrlRef.current = callback;
   }, []);
 
-  const resetOutputs = () => {
-    setEnhancedArtwork(null);
-    setOriginalDoodleDataUrl(null);
-    setSolution(null);
-    setTutorials(null);
+  const resetLocalOutputs = () => {
+    setCurrentEnhancedArtworkUri(null);
+    setCurrentOriginalDoodleDataUrl(null);
+    setCurrentSolution(null);
+    setCurrentTutorials(null);
   };
 
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode);
-    resetOutputs();
+    resetLocalOutputs(); 
     toast({
       title: 'Mode Switched',
       description: `Switched to ${newMode === 'doodle' ? 'Doodle' : 'Equation'} Mode.`,
@@ -71,7 +78,7 @@ export function MagicCanvasSection() {
   };
 
   const onCanvasActuallyCleared = () => {
-    resetOutputs();
+    resetLocalOutputs();
     setClearCanvasSignal(false);
      toast({
       title: 'Canvas Cleared',
@@ -128,29 +135,36 @@ export function MagicCanvasSection() {
     }
 
     setIsLoading(true);
-    resetOutputs();
-    if (mode === 'doodle') setOriginalDoodleDataUrl(canvasDataUri);
+    resetLocalOutputs();
+    if (mode === 'doodle') setCurrentOriginalDoodleDataUrl(canvasDataUri);
 
     try {
+      let tutorialsOutput: RecommendTutorialsOutput | null = null;
       if (mode === 'doodle') {
         const currentPrompt = prompt.trim() || 'simple doodle';
         const enhanceInput: EnhanceDoodleInput = { doodleDataUri: canvasDataUri, prompt: currentPrompt };
         const enhanceOutput = await enhanceDoodle(enhanceInput);
-        setEnhancedArtwork(enhanceOutput);
-        toast({ title: 'Doodle Enhanced!', description: 'Your artwork is ready below.' });
+        setCurrentEnhancedArtworkUri(enhanceOutput.enhancedArtworkDataUri);
+        setOutputDialogTitle('Enhanced Artwork');
+        toast({ title: 'Doodle Enhanced!', description: 'Your artwork is ready.' });
+        
         const recommendInput: RecommendTutorialsInput = { query: currentPrompt };
-        const recommendOutput = await recommendTutorials(recommendInput);
-        setTutorials(recommendOutput);
+        tutorialsOutput = await recommendTutorials(recommendInput);
+
       } else if (mode === 'equation') {
         const solveInput: SolveEquationInput = { equationImageDataUri: canvasDataUri };
         const solveOutput = await solveEquation(solveInput);
-        setSolution(solveOutput);
-        toast({ title: 'Equation Processed!', description: 'The solution is displayed below.' });
+        setCurrentSolution(solveOutput);
+        setOutputDialogTitle('Equation Solved');
+        toast({ title: 'Equation Processed!', description: 'The solution is ready.' });
+        
         const tutorialQuery = solveOutput.recognizedEquationText || "mathematical equation help";
         const recommendInput: RecommendTutorialsInput = { query: tutorialQuery };
-        const recommendOutput = await recommendTutorials(recommendInput);
-        setTutorials(recommendOutput);
+        tutorialsOutput = await recommendTutorials(recommendInput);
       }
+      setCurrentTutorials(tutorialsOutput);
+      setIsOutputDialogOpen(true);
+
     } catch (error) {
       console.error('Error processing canvas:', error);
       toast({ title: 'Error', description: `Could not process the canvas content. Please try again. ${error instanceof Error ? error.message : ''}`, variant: 'destructive' });
@@ -160,9 +174,9 @@ export function MagicCanvasSection() {
   };
 
   const handleDownloadArtwork = () => {
-    if (enhancedArtwork?.enhancedArtworkDataUri) {
+    if (currentEnhancedArtworkUri) {
       const link = document.createElement('a');
-      link.href = enhancedArtwork.enhancedArtworkDataUri;
+      link.href = currentEnhancedArtworkUri;
       link.download = 'enhanced-artwork.png';
       document.body.appendChild(link);
       link.click();
@@ -172,259 +186,250 @@ export function MagicCanvasSection() {
   };
   
   useEffect(() => {
-    resetOutputs();
+    resetLocalOutputs();
   }, [mode]);
 
   return (
     <TooltipProvider>
-      <div className="space-y-6 p-2 md:p-4 h-full flex flex-col">
-        <Card className="shadow-xl flex flex-col flex-grow">
-          <div className="flex items-center justify-between gap-4 px-6 py-4 border-b">
-              <RadioGroup value={mode} onValueChange={(value) => handleModeChange(value as Mode)} className="flex gap-2 items-center">
-                <Label className="text-sm font-medium hidden sm:block">Mode:</Label>
-                <div className="flex items-center space-x-1">
-                  <RadioGroupItem value="doodle" id="r-doodle-top" />
-                  <Label htmlFor="r-doodle-top" className="text-sm flex items-center gap-1 cursor-pointer"><PaletteIcon size={16}/> Doodle</Label>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <RadioGroupItem value="equation" id="r-equation-top" />
-                  <Label htmlFor="r-equation-top" className="text-sm flex items-center gap-1 cursor-pointer"><Calculator size={16}/> Equation</Label>
-                </div>
-              </RadioGroup>
-              
-              <div className="flex items-center gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={handleCanvasClearRequest} aria-label="Clear Canvas" className="border-destructive text-destructive hover:bg-destructive/10 focus:ring-destructive/50">
-                      <Eraser size={20} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Clear Canvas</p>
-                  </TooltipContent>
-                </Tooltip>
+      <div className="relative w-full h-full flex flex-col overflow-hidden">
+        {/* Mode Selector - Top Bar */}
+        <div className="p-2 bg-background/80 backdrop-blur-sm shadow-sm z-10 flex justify-center">
+          <RadioGroup value={mode} onValueChange={(value) => handleModeChange(value as Mode)} className="flex gap-2 items-center">
+            <div className="flex items-center space-x-1">
+              <RadioGroupItem value="doodle" id="r-doodle-fab" />
+              <Label htmlFor="r-doodle-fab" className="text-sm flex items-center gap-1 cursor-pointer"><PaletteIcon size={16}/> Doodle</Label>
+            </div>
+            <div className="flex items-center space-x-1">
+              <RadioGroupItem value="equation" id="r-equation-fab" />
+              <Label htmlFor="r-equation-fab" className="text-sm flex items-center gap-1 cursor-pointer"><Calculator size={16}/> Equation</Label>
+            </div>
+          </RadioGroup>
+        </div>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="p-[1.5px] rounded-md bg-gradient-to-r from-primary to-accent inline-block">
+        {/* Canvas Area */}
+        <div className="flex-grow relative">
+          <DoodleCanvas
+            getCanvasDataUrl={setGetCanvasDataUrl}
+            clearCanvasSignal={clearCanvasSignal}
+            onClear={onCanvasActuallyCleared}
+            color={drawingColor}
+            lineWidth={drawingLineWidth}
+          />
+        </div>
+
+        {/* Floating Action Buttons */}
+        <div className="fixed bottom-4 right-4 flex flex-col gap-3 z-50">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleCanvasClearRequest}
+                aria-label="Clear Canvas"
+                className="rounded-full shadow-lg w-14 h-14 border-destructive text-destructive hover:bg-destructive/10 focus:ring-destructive/50"
+              >
+                <Eraser size={24} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p>Clear Canvas</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+               <div className="p-1 rounded-full bg-gradient-to-r from-primary to-accent shadow-lg">
+                <Button
+                  onClick={handleProcessCanvas}
+                  disabled={isLoading}
+                  variant="default" // Changed from outline to make gradient wrapper work
+                  size="icon"
+                  className="rounded-full w-14 h-14 border-0 bg-primary hover:bg-primary/90 text-primary-foreground data-[disabled]:opacity-50 data-[disabled]:pointer-events-none"
+                  aria-label={mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}
+                >
+                  {isLoading ? <LoadingSpinner size={24} /> : (mode === 'doodle' ? <Sparkles size={24} /> : <Calculator size={24} />)}
+                </Button>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="left">
+              <p>{mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}</p>
+            </TooltipContent>
+          </Tooltip>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" aria-label="Canvas Settings" className="rounded-full shadow-lg w-14 h-14">
+                    <Settings className="h-6 w-6" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="left"><p>Settings</p></TooltipContent>
+              </Tooltip>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-4 space-y-4 mb-2" side="top" align="end">
+              {mode === 'doodle' && (
+                <div className="space-y-2">
+                  <Label htmlFor="style-prompt-popover-fab" className="flex items-center gap-1 text-sm font-medium">
+                    <Sparkles size={16} className="text-primary" /> Artwork Style
+                  </Label>
+                  <Input
+                    id="style-prompt-popover-fab"
+                    type="text"
+                    placeholder="e.g., Van Gogh style"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    className="w-full text-sm"
+                    aria-label="Enter artwork style prompt"
+                  />
+                  <p className="text-xs text-muted-foreground">Defaults to "simple doodle" if empty.</p>
+                </div>
+              )}
+               <div className="space-y-2">
+                <Label htmlFor="color-picker-popover-fab" className="flex items-center gap-1 text-sm font-medium">
+                  <PaletteIcon size={16} className="text-primary" /> Color
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <Button
-                        onClick={handleProcessCanvas}
-                        disabled={isLoading}
-                        variant="outline" 
+                        variant="outline"
                         size="icon"
-                        className="border-0 bg-background hover:bg-secondary text-primary data-[disabled]:opacity-50 data-[disabled]:pointer-events-none"
-                        aria-label={mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}
-                      >
-                        {isLoading ? <LoadingSpinner size={20} /> : (mode === 'doodle' ? <Sparkles size={20} /> : <Calculator size={20} />)}
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation'}</p>
-                  </TooltipContent>
-                </Tooltip>
-                
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="icon" aria-label="Canvas Settings">
-                      <Settings className="h-5 w-5" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-4 space-y-4">
-                    {mode === 'doodle' && (
-                      <div className="space-y-2">
-                        <Label htmlFor="style-prompt-popover" className="flex items-center gap-1 text-sm font-medium">
-                          <Sparkles size={16} className="text-primary" /> Artwork Style
-                        </Label>
-                        <Input
-                          id="style-prompt-popover"
-                          type="text"
-                          placeholder="e.g., Van Gogh style"
-                          value={prompt}
-                          onChange={(e) => setPrompt(e.target.value)}
-                          className="w-full text-sm"
-                          aria-label="Enter artwork style prompt"
+                        className={cn(
+                          "h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary",
+                          drawingColor.toLowerCase() === QUICK_COLOR_BLACK && "ring-2 ring-primary ring-offset-2"
+                        )}
+                        style={{ backgroundColor: QUICK_COLOR_BLACK }}
+                        onClick={() => setDrawingColor(QUICK_COLOR_BLACK)}
+                        aria-label="Select black color"
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent><p>Black</p></TooltipContent>
+                  </Tooltip>
+                   <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className={cn(
+                          "h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary",
+                          drawingColor.toLowerCase() === QUICK_COLOR_RED && "ring-2 ring-primary ring-offset-2"
+                        )}
+                        style={{ backgroundColor: QUICK_COLOR_RED }}
+                        onClick={() => setDrawingColor(QUICK_COLOR_RED)}
+                        aria-label="Select red color"
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent><p>Red</p></TooltipContent>
+                  </Tooltip>
+                  <div className="flex items-center h-9 rounded-md border border-input px-1 bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                    <Input
+                      id="color-picker-popover-fab"
+                      type="color"
+                      value={drawingColor}
+                      onChange={(e) => setDrawingColor(e.target.value)}
+                      className="h-full w-9 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-0 focus-visible:ring-offset-0"
+                      aria-label="Select custom drawing color"
+                    />
+                    <PaletteIcon size={16} className="text-muted-foreground ml-1" />
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="line-width-popover-fab" className="flex items-center gap-1 text-sm font-medium">
+                  <PencilLine size={16} className="text-primary" /> Brush Size
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="line-width-popover-fab"
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={drawingLineWidth}
+                    onChange={(e) => setDrawingLineWidth(Number(e.target.value))}
+                    className="w-full accent-primary cursor-pointer"
+                    aria-label="Select line width"
+                  />
+                  <span className="text-sm w-8 text-center tabular-nums">{drawingLineWidth}</span>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        {/* Output Dialog */}
+        <Dialog open={isOutputDialogOpen} onOpenChange={(isOpen) => {
+            setIsOutputDialogOpen(isOpen);
+            if (!isOpen) {
+                resetLocalOutputs(); // Clear outputs when dialog is closed
+            }
+        }}>
+          <DialogContent className="sm:max-w-lg md:max-w-2xl max-h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle className="font-headline">{outputDialogTitle}</DialogTitle>
+            </DialogHeader>
+            <div className="flex-grow overflow-y-auto space-y-4 p-1">
+              {isLoading && (
+                  <div className="text-center py-10">
+                    <LoadingSpinner size={48} />
+                    <p className="text-muted-foreground mt-2">Processing...</p>
+                  </div>
+              )}
+              {!isLoading && mode === 'doodle' && currentEnhancedArtworkUri && (
+                <div className="space-y-4">
+                  <CardDescription>Your AI-enhanced doodle:</CardDescription>
+                  <div className="flex flex-col sm:flex-row gap-4 items-center justify-around">
+                    {currentOriginalDoodleDataUrl && (
+                      <div className="text-center">
+                        <h3 className="text-sm font-medium text-muted-foreground mb-1">Original</h3>
+                        <Image
+                          src={currentOriginalDoodleDataUrl}
+                          alt="Original Doodle"
+                          width={200}
+                          height={125}
+                          className="rounded-lg border shadow-md bg-white"
+                          data-ai-hint="sketch drawing"
                         />
-                        <p className="text-xs text-muted-foreground">Defaults to "simple doodle" if empty.</p>
                       </div>
                     )}
-                     <div className="space-y-2">
-                      <Label htmlFor="color-picker-popover" className="flex items-center gap-1 text-sm font-medium">
-                        <PaletteIcon size={16} className="text-primary" /> Color
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className={cn(
-                                "h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary",
-                                drawingColor.toLowerCase() === QUICK_COLOR_BLACK && "ring-2 ring-primary ring-offset-2"
-                              )}
-                              style={{ backgroundColor: QUICK_COLOR_BLACK }}
-                              onClick={() => setDrawingColor(QUICK_COLOR_BLACK)}
-                              aria-label="Select black color"
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Black</p>
-                          </TooltipContent>
-                        </Tooltip>
-                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className={cn(
-                                "h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary",
-                                drawingColor.toLowerCase() === QUICK_COLOR_RED && "ring-2 ring-primary ring-offset-2"
-                              )}
-                              style={{ backgroundColor: QUICK_COLOR_RED }}
-                              onClick={() => setDrawingColor(QUICK_COLOR_RED)}
-                              aria-label="Select red color"
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Red</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <div className="flex items-center h-9 rounded-md border border-input px-1 bg-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-                          <Input
-                            id="color-picker-popover"
-                            type="color"
-                            value={drawingColor}
-                            onChange={(e) => setDrawingColor(e.target.value)}
-                            className="h-full w-9 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-0 focus-visible:ring-offset-0"
-                            aria-label="Select custom drawing color"
-                          />
-                          <PaletteIcon size={16} className="text-muted-foreground ml-1" />
-                        </div>
-                      </div>
+                    <div className="text-center">
+                      <h3 className="text-sm font-medium text-primary mb-1">Enhanced</h3>
+                      <Image
+                        src={currentEnhancedArtworkUri}
+                        alt="Enhanced Artwork"
+                        width={200}
+                        height={125}
+                        className="rounded-lg border-2 border-primary shadow-xl bg-white"
+                        data-ai-hint="digital art"
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="line-width-popover" className="flex items-center gap-1 text-sm font-medium">
-                        <PencilLine size={16} className="text-primary" /> Brush Size
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          id="line-width-popover"
-                          type="range"
-                          min="1"
-                          max="50"
-                          value={drawingLineWidth}
-                          onChange={(e) => setDrawingLineWidth(Number(e.target.value))}
-                          className="w-full accent-primary cursor-pointer"
-                          aria-label="Select line width"
-                        />
-                        <span className="text-sm w-8 text-center tabular-nums">{drawingLineWidth}</span>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-          </div>
-          
-          <CardContent className="p-6 pt-6 flex flex-col flex-grow">
-            <div className="flex-grow relative border border-input rounded-lg shadow-inner overflow-hidden min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
-              <DoodleCanvas
-                getCanvasDataUrl={setGetCanvasDataUrl}
-                clearCanvasSignal={clearCanvasSignal}
-                onClear={onCanvasActuallyCleared}
-                color={drawingColor}
-                lineWidth={drawingLineWidth}
-              />
+                  </div>
+                  <Button onClick={handleDownloadArtwork} variant="outline" className="w-full gap-2 mt-2">
+                    <Download size={18} /> Download Artwork
+                  </Button>
+                </div>
+              )}
+
+              {!isLoading && mode === 'equation' && currentSolution && (
+                <div className="space-y-4">
+                  {currentSolution.recognizedEquationText && (
+                    <CardDescription>Recognized: <span className="font-mono">{currentSolution.recognizedEquationText}</span></CardDescription>
+                  )}
+                  <p className="text-lg font-medium text-primary bg-secondary p-3 rounded-md whitespace-pre-wrap">
+                    {currentSolution.solution}
+                  </p>
+                </div>
+              )}
+              
+              <TutorialList tutorials={currentTutorials} isLoading={isLoading && (currentTutorials === null)} />
             </div>
-          </CardContent>
+            <DialogFooter className="mt-auto pt-4">
+                <Button variant="outline" onClick={() => setIsOutputDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-        </Card>
-
-        {isLoading && (
-          <div className="mt-6 text-center">
-            <LoadingSpinner size={48} />
-            <p className="text-muted-foreground mt-2">Processing your canvas... this might take a moment.</p>
-            {(mode === 'doodle' && originalDoodleDataUrl) && (
-              <div className="mt-4 p-2 border border-dashed border-primary rounded-lg inline-block relative bg-white">
-                <Image
-                  src={originalDoodleDataUrl}
-                  alt="Original Doodle Preview"
-                  width={250}
-                  height={175}
-                  className="rounded-md opacity-50"
-                  data-ai-hint="abstract drawing"
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-background/30 backdrop-blur-sm">
-                  <Sparkles className="h-12 w-12 text-primary animate-ping" />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {!isLoading && mode === 'doodle' && enhancedArtwork && (
-          <Card className="mt-6 shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline">Enhanced Artwork</CardTitle>
-              <CardDescription>Your AI-enhanced doodle:</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col md:flex-row gap-4 items-center justify-around">
-              {originalDoodleDataUrl && (
-                <div className="text-center">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Original</h3>
-                  <Image
-                    src={originalDoodleDataUrl}
-                    alt="Original Doodle"
-                    width={300}
-                    height={175}
-                    className="rounded-lg border shadow-md bg-white"
-                    data-ai-hint="sketch drawing"
-                  />
-                </div>
-              )}
-              <div className="text-center">
-                <h3 className="text-sm font-medium text-primary mb-2">Enhanced</h3>
-                <Image
-                  src={enhancedArtwork.enhancedArtworkDataUri}
-                  alt="Enhanced Artwork"
-                  width={300}
-                  height={175}
-                  className="rounded-lg border-2 border-primary shadow-xl bg-white"
-                  data-ai-hint="digital art"
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="justify-center">
-              <Button onClick={handleDownloadArtwork} variant="outline" className="gap-2">
-                <Download size={18} /> Download Artwork
-              </Button>
-            </CardFooter>
-          </Card>
-        )}
-
-        {!isLoading && mode === 'equation' && solution && (
-          <Card className="mt-6 shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline">Solution</CardTitle>
-              {solution.recognizedEquationText && (
-                <CardDescription>Recognized Equation: <span className="font-mono">{solution.recognizedEquationText}</span></CardDescription>
-              )}
-              {!solution.recognizedEquationText && (
-                  <CardDescription>The solution to your equation is:</CardDescription>
-              )}
-            </CardHeader>
-            <CardContent>
-              <p className="text-lg font-medium text-primary bg-secondary p-4 rounded-md whitespace-pre-wrap">
-                {solution.solution}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-        
-        <TutorialList tutorials={tutorials} isLoading={isLoading && (tutorials === null)} />
       </div>
     </TooltipProvider>
   );
 }
-    
-
-    
