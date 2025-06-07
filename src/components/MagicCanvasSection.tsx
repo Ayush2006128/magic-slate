@@ -54,9 +54,7 @@ export function MagicCanvasSection() {
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode);
     resetOutputs();
-    if (newMode !== 'doodle') {
-      setPrompt('');
-    }
+    // No need to clear prompt here, as it's now optional and inside popover
   };
   
   const handleCanvasClearRequest = () => {
@@ -89,7 +87,7 @@ export function MagicCanvasSection() {
     }
 
     const tempCanvas = document.createElement('canvas');
-    if (img.width === 0 || img.height === 0) { // Check if canvas was not rendered yet
+    if (img.width === 0 || img.height === 0) { 
         toast({ title: 'Empty Canvas', description: 'Please draw or write something on the canvas.', variant: 'destructive' });
         return;
     }
@@ -116,22 +114,18 @@ export function MagicCanvasSection() {
       return;
     }
 
-    if (mode === 'doodle' && !prompt.trim()) {
-      toast({ title: 'Error', description: 'Please enter an artwork style prompt for the doodle.', variant: 'destructive' });
-      return;
-    }
-
     setIsLoading(true);
     resetOutputs();
     if (mode === 'doodle') setOriginalDoodleDataUrl(canvasDataUri);
 
     try {
       if (mode === 'doodle') {
-        const enhanceInput: EnhanceDoodleInput = { doodleDataUri: canvasDataUri, prompt };
+        const currentPrompt = prompt.trim() || 'simple doodle';
+        const enhanceInput: EnhanceDoodleInput = { doodleDataUri: canvasDataUri, prompt: currentPrompt };
         const enhanceOutput = await enhanceDoodle(enhanceInput);
         setEnhancedArtwork(enhanceOutput);
         toast({ title: 'Doodle Enhanced!', description: 'Your artwork is ready below.' });
-        const recommendInput: RecommendTutorialsInput = { query: prompt };
+        const recommendInput: RecommendTutorialsInput = { query: currentPrompt };
         const recommendOutput = await recommendTutorials(recommendInput);
         setTutorials(recommendOutput);
       } else if (mode === 'equation') {
@@ -166,7 +160,7 @@ export function MagicCanvasSection() {
 
   const getTitle = () => mode === 'doodle' ? 'AI Doodle Enhancer' : 'Handwritten Equation Solver';
   const getDescription = () => mode === 'doodle' 
-    ? 'Draw a simple doodle, describe a style, and let AI transform it into artwork.'
+    ? 'Draw a simple doodle, optionally describe a style, and let AI transform it into artwork.'
     : 'Write a mathematical equation on the canvas and let AI solve it for you.';
   const getButtonIcon = () => mode === 'doodle' ? <Sparkles className="mr-2 h-5 w-5" /> : <Calculator className="mr-2 h-5 w-5" />;
   const getButtonText = () => mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation';
@@ -207,8 +201,25 @@ export function MagicCanvasSection() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-4 space-y-4">
+                {mode === 'doodle' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="style-prompt-popover" className="flex items-center gap-1 text-sm font-medium">
+                      <Sparkles size={16} className="text-primary" /> Artwork Style (Optional)
+                    </Label>
+                    <Input
+                      id="style-prompt-popover"
+                      type="text"
+                      placeholder="e.g., Van Gogh style"
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      className="w-full text-sm"
+                      aria-label="Enter artwork style prompt"
+                    />
+                    <p className="text-xs text-muted-foreground">Defaults to "simple doodle" if empty.</p>
+                  </div>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="color-picker-popover" className="flex items-center gap-1">
+                  <Label htmlFor="color-picker-popover" className="flex items-center gap-1 text-sm font-medium">
                     <PaletteIcon size={16} className="text-primary" /> Color
                   </Label>
                   <Input
@@ -221,7 +232,7 @@ export function MagicCanvasSection() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="line-width-popover" className="flex items-center gap-1">
+                  <Label htmlFor="line-width-popover" className="flex items-center gap-1 text-sm font-medium">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil-line text-primary"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/><path d="m15 5 3 3"/></svg>
                      Brush Size
                   </Label>
@@ -230,7 +241,7 @@ export function MagicCanvasSection() {
                       id="line-width-popover"
                       type="range"
                       min="1"
-                      max="50" // Increased max line width
+                      max="50"
                       value={drawingLineWidth}
                       onChange={(e) => setDrawingLineWidth(Number(e.target.value))}
                       className="w-full accent-primary cursor-pointer"
@@ -242,21 +253,6 @@ export function MagicCanvasSection() {
               </PopoverContent>
             </Popover>
           </div>
-
-          {mode === 'doodle' && (
-            <div className="pt-2">
-              <Label htmlFor="style-prompt" className="text-base">Artwork Style Prompt</Label>
-              <Input
-                id="style-prompt"
-                type="text"
-                placeholder="e.g., Van Gogh style, futuristic cityscape, watercolor landscape"
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="mt-1 text-lg"
-                aria-label="Enter artwork style prompt"
-              />
-            </div>
-          )}
           
           <div className="flex-grow relative border border-input rounded-lg shadow-inner overflow-hidden min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
             <DoodleCanvas
