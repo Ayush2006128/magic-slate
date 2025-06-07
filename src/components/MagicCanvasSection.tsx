@@ -339,8 +339,9 @@ export function MagicCanvasSection(): JSX.Element {
             </TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-             <TooltipTrigger asChild>
+          <Popover> {/* Popover root starts here */}
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
@@ -351,10 +352,11 @@ export function MagicCanvasSection(): JSX.Element {
                     <Settings className="h-6 w-6" />
                   </Button>
                 </PopoverTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="left">
-              <p>Settings</p>
-            </TooltipContent>
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p>Settings</p>
+              </TooltipContent>
+            </Tooltip>
             <PopoverContent
               className="w-auto p-4 space-y-4"
               side="top"
@@ -470,7 +472,8 @@ export function MagicCanvasSection(): JSX.Element {
                 </div>
               </div>
             </PopoverContent>
-          </Popover>
+          </Popover> {/* Popover root ends here */}
+
 
           <Tooltip>
             <TooltipTrigger asChild>
