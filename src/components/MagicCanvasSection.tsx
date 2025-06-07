@@ -11,10 +11,11 @@ import { Label } from '@/components/ui/label';
 import { TutorialList } from '@/components/TutorialList';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser, Settings } from 'lucide-react';
+import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser, Settings, PencilLine } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 
 import type { EnhanceDoodleInput, EnhanceDoodleOutput } from '@/ai/flows/enhance-doodle';
@@ -26,6 +27,9 @@ import { recommendTutorials } from '@/ai/flows/recommend-tutorials';
 
 type Mode = 'doodle' | 'equation';
 
+const QUICK_COLOR_BLACK = '#000000';
+const QUICK_COLOR_RED = '#ff0000';
+
 export function MagicCanvasSection() {
   const [mode, setMode] = useState<Mode>('doodle');
   const [prompt, setPrompt] = useState('');
@@ -36,7 +40,7 @@ export function MagicCanvasSection() {
   const [isLoading, setIsLoading] = useState(false);
   const [clearCanvasSignal, setClearCanvasSignal] = useState(false);
 
-  const [drawingColor, setDrawingColor] = useState('#000000');
+  const [drawingColor, setDrawingColor] = useState(QUICK_COLOR_BLACK);
   const [drawingLineWidth, setDrawingLineWidth] = useState(5);
 
   const { toast } = useToast();
@@ -69,6 +73,10 @@ export function MagicCanvasSection() {
   const onCanvasActuallyCleared = () => {
     resetOutputs();
     setClearCanvasSignal(false);
+     toast({
+      title: 'Canvas Cleared',
+      description: 'The drawing area is now empty.',
+    });
   };
 
   const handleProcessCanvas = async () => {
@@ -226,7 +234,7 @@ export function MagicCanvasSection() {
                     {mode === 'doodle' && (
                       <div className="space-y-2">
                         <Label htmlFor="style-prompt-popover" className="flex items-center gap-1 text-sm font-medium">
-                          <Sparkles size={16} className="text-primary" /> Artwork Style (Optional)
+                          <Sparkles size={16} className="text-primary" /> Artwork Style
                         </Label>
                         <Input
                           id="style-prompt-popover"
@@ -240,23 +248,60 @@ export function MagicCanvasSection() {
                         <p className="text-xs text-muted-foreground">Defaults to "simple doodle" if empty.</p>
                       </div>
                     )}
-                    <div className="space-y-2">
+                     <div className="space-y-2">
                       <Label htmlFor="color-picker-popover" className="flex items-center gap-1 text-sm font-medium">
                         <PaletteIcon size={16} className="text-primary" /> Color
                       </Label>
-                      <Input
-                        id="color-picker-popover"
-                        type="color"
-                        value={drawingColor}
-                        onChange={(e) => setDrawingColor(e.target.value)}
-                        className="w-full h-10 p-1 rounded-md border-input"
-                        aria-label="Select drawing color"
-                      />
+                      <div className="flex items-center gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className={cn(
+                                "h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary",
+                                drawingColor.toLowerCase() === QUICK_COLOR_BLACK && "ring-2 ring-primary ring-offset-2"
+                              )}
+                              style={{ backgroundColor: QUICK_COLOR_BLACK }}
+                              onClick={() => setDrawingColor(QUICK_COLOR_BLACK)}
+                              aria-label="Select black color"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Black</p>
+                          </TooltipContent>
+                        </Tooltip>
+                         <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className={cn(
+                                "h-9 w-9 p-0 border-muted-foreground/50 hover:border-primary",
+                                drawingColor.toLowerCase() === QUICK_COLOR_RED && "ring-2 ring-primary ring-offset-2"
+                              )}
+                              style={{ backgroundColor: QUICK_COLOR_RED }}
+                              onClick={() => setDrawingColor(QUICK_COLOR_RED)}
+                              aria-label="Select red color"
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Red</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Input
+                          id="color-picker-popover"
+                          type="color"
+                          value={drawingColor}
+                          onChange={(e) => setDrawingColor(e.target.value)}
+                          className="h-9 w-12 cursor-pointer rounded-md border-input p-1"
+                          aria-label="Select custom drawing color"
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="line-width-popover" className="flex items-center gap-1 text-sm font-medium">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil-line text-primary"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/><path d="m15 5 3 3"/></svg>
-                         Brush Size
+                        <PencilLine size={16} className="text-primary" /> Brush Size
                       </Label>
                       <div className="flex items-center gap-2">
                         <Input
