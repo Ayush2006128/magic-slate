@@ -2,57 +2,88 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Eraser, Palette } from 'lucide-react';
 
 interface DoodleCanvasProps {
-  width?: number;
-  height?: number;
+  color: string;
+  lineWidth: number;
   onCanvasChange?: (dataUrl: string) => void;
   getCanvasDataUrl?: (callback: () => string | null) => void;
   clearCanvasSignal?: boolean;
-  onClear?: () => void; // Callback after canvas is cleared internally
+  onClear?: () => void;
 }
 
 export function DoodleCanvas({
-  width = 500,
-  height = 400,
+  color,
+  lineWidth,
   onCanvasChange,
   getCanvasDataUrl,
   clearCanvasSignal,
-  onClear // Renamed from onCanvasCleared to onClear to match usage
+  onClear,
 }: DoodleCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [color, setColor] = useState('#000000'); // Default black
-  const [lineWidth, setLineWidth] = useState(5);
 
   const getContext = useCallback(() => {
     const canvas = canvasRef.current;
     return canvas?.getContext('2d');
   }, []);
 
-  const initializeCanvas = useCallback(() => {
+  const onCanvasChangeRef = useRef(onCanvasChange);
+  useEffect(() => {
+    onCanvasChangeRef.current = onCanvasChange;
+  }, [onCanvasChange]);
+
+  const stableInitializeCanvas = useCallback(() => {
     const context = getContext();
     if (context && canvasRef.current) {
-      context.fillStyle = '#FFFFFF'; // Set background to white
+      context.fillStyle = '#FFFFFF';
       context.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      if (onCanvasChange) {
-        onCanvasChange(canvasRef.current.toDataURL('image/png'));
+      if (onCanvasChangeRef.current) {
+        // Only provide a data URL if the canvas is not essentially blank after init
+        const pixelBuffer = new Uint32Array(
+          context.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height).data.buffer
+        );
+        const isEffectivelyBlank = !pixelBuffer.some(pxColor => pxColor !== 0 && pxColor !== 0xffffffff);
+        if(!isEffectivelyBlank || canvasRef.current.width === 0 || canvasRef.current.height === 0) { // prevent sending blank image on init unless it was tiny
+             // console.log("Canvas initialized, but not sending blank data URL unless forced by 0 dimensions");
+        } else {
+            // onCanvasChangeRef.current(canvasRef.current.toDataURL('image/png'));
+            // Decided against sending image on init/resize as it's usually blank.
+        }
       }
     }
-  }, [getContext, onCanvasChange]);
-  
+  }, [getContext]);
+
   useEffect(() => {
-    // Ensure canvas dimensions are set before initializing
-    if (canvasRef.current) {
-        canvasRef.current.width = width;
-        canvasRef.current.height = height;
-        initializeCanvas();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    if (!parent) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (canvasRef.current && parent) {
+        const newWidth = parent.clientWidth;
+        const newHeight = parent.clientHeight;
+        if (canvasRef.current.width !== newWidth || canvasRef.current.height !== newHeight) {
+            canvasRef.current.width = newWidth;
+            canvasRef.current.height = newHeight;
+            stableInitializeCanvas();
+        }
+      }
+    });
+    resizeObserver.observe(parent);
+
+    // Initial size set
+    const initialWidth = parent.clientWidth;
+    const initialHeight = parent.clientHeight;
+    if (canvas.width !== initialWidth || canvas.height !== initialHeight) {
+        canvas.width = initialWidth;
+        canvas.height = initialHeight;
+        stableInitializeCanvas();
     }
-  }, [width, height, initializeCanvas]);
+    
+    return () => resizeObserver.disconnect();
+  }, [stableInitializeCanvas]);
 
 
   useEffect(() => {
@@ -62,11 +93,13 @@ export function DoodleCanvas({
         if (canvas) {
           const context = getContext();
           if(context){
+            // Ensure background is white if it's completely transparent or un-drawn
             const pixelBuffer = new Uint32Array(
               context.getImageData(0, 0, canvas.width, canvas.height).data.buffer
             );
-            const isEffectivelyBlank = !pixelBuffer.some(pxColor => pxColor !== 0 && pxColor !== 0xffffffff); // 0 is transparent, 0xffffffff is white
-            if(isEffectivelyBlank) {
+            // Check if all pixels are transparent (alpha=0) or white (0xffffffff)
+            const isEffectivelyBlank = !pixelBuffer.some(pxColor => (pxColor & 0xff000000) !== 0 && pxColor !== 0xffffffff);
+            if(isEffectivelyBlank && (canvas.width > 0 && canvas.height > 0) ) { // Add check for dimensions > 0
               context.fillStyle = '#FFFFFF';
               context.fillRect(0, 0, canvas.width, canvas.height);
             }
@@ -82,22 +115,22 @@ export function DoodleCanvas({
     const context = getContext();
     if (context && canvasRef.current) {
       context.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-      initializeCanvas();
+      stableInitializeCanvas(); // Re-initialize with white background
     }
-  }, [getContext, initializeCanvas]);
+  }, [getContext, stableInitializeCanvas]);
 
   useEffect(() => {
     if (clearCanvasSignal) {
       clearInternalCanvas();
       if (onClear) {
-        onClear(); // Signal back that clearing is done
+        onClear();
       }
     }
   }, [clearCanvasSignal, onClear, clearInternalCanvas]);
 
 
   const startDrawing = useCallback((event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    event.preventDefault(); // Prevents page scrolling on touch devices
+    event.preventDefault();
     const context = getContext();
     if (context) {
       const { offsetX, offsetY } = getCoordinates(event);
@@ -128,21 +161,21 @@ export function DoodleCanvas({
     if (context) {
       context.closePath();
       setIsDrawing(false);
-      if (onCanvasChange && canvasRef.current) {
-        onCanvasChange(canvasRef.current.toDataURL('image/png'));
+      if (onCanvasChangeRef.current && canvasRef.current) {
+        onCanvasChangeRef.current(canvasRef.current.toDataURL('image/png'));
       }
     }
-  }, [getContext, onCanvasChange]);
+  }, [getContext]);
 
   const getCoordinates = (event: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { offsetX: 0, offsetY: 0 };
     const rect = canvas.getBoundingClientRect();
     let clientX, clientY;
-    if ('touches' in event && event.touches.length > 0) { // Touch event
+    if ('touches' in event && event.touches.length > 0) {
       clientX = event.touches[0].clientX;
       clientY = event.touches[0].clientY;
-    } else if ('clientX' in event) { // Mouse event
+    } else if ('clientX' in event) {
       clientX = event.clientX;
       clientY = event.clientY;
     } else {
@@ -155,72 +188,18 @@ export function DoodleCanvas({
     };
   };
 
-  // The external clear button is now in MagicCanvasSection, so this internal button can be removed
-  // if desired, or kept for finer control within the canvas component itself.
-  // For now, let's keep it as it's part of the original DoodleCanvas component.
-  // The `handleCanvasClearRequest` in `MagicCanvasSection` will trigger the `clearCanvasSignal`.
-  const handleInternalClearButton = () => {
-    clearInternalCanvas();
-    // If there's an external onClear, it will be called via the signal effect
-  };
-
-
   return (
-    <div className="flex flex-col items-center space-y-4 w-full">
-      <div className="flex flex-wrap gap-x-4 gap-y-2 items-center justify-center p-2 bg-muted rounded-lg shadow w-full max-w-md">
-        <div className="flex items-center gap-2">
-          <Label htmlFor="color-picker" className="flex items-center gap-1 cursor-pointer">
-            <Palette size={20} className="text-primary" /> Color:
-          </Label>
-          <Input
-            id="color-picker"
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            className="w-12 h-9 p-0.5 rounded-md border-input"
-            aria-label="Select drawing color"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Label htmlFor="line-width" className="flex items-center gap-1 cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil-line text-primary"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/><path d="m15 5 3 3"/></svg>
-            Size:
-          </Label>
-          <Input
-            id="line-width"
-            type="range"
-            min="1"
-            max="20"
-            value={lineWidth}
-            onChange={(e) => setLineWidth(Number(e.target.value))}
-            className="w-20 md:w-24 accent-primary cursor-pointer"
-            aria-label="Select line width"
-          />
-          <span className="text-sm w-5 text-center">{lineWidth}</span>
-        </div>
-        {/* This button is now redundant if MagicCanvasSection has its own global clear button.
-            However, keeping it for now as part of the canvas's own controls.
-            The `clearCanvasSignal` prop handles external clearing.
-        */}
-        <Button variant="outline" size="sm" onClick={handleInternalClearButton} className="gap-1.5 px-3 py-1.5 h-auto text-sm">
-          <Eraser size={16} /> Clear Drawing Area
-        </Button>
-      </div>
-      <canvas
-        ref={canvasRef}
-        // width and height are set in useEffect to ensure canvasRef is current
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={stopDrawing}
-        onMouseLeave={stopDrawing}
-        onTouchStart={startDrawing}
-        onTouchMove={draw}
-        onTouchEnd={stopDrawing}
-        className="border border-primary rounded-lg shadow-md bg-white cursor-crosshair touch-none max-w-full"
-        style={{ width: `${width}px`, height: `${height}px` }}
-        aria-label="Drawing and Equation Canvas"
-      />
-    </div>
+    <canvas
+      ref={canvasRef}
+      onMouseDown={startDrawing}
+      onMouseMove={draw}
+      onMouseUp={stopDrawing}
+      onMouseLeave={stopDrawing}
+      onTouchStart={startDrawing}
+      onTouchMove={draw}
+      onTouchEnd={stopDrawing}
+      className="w-full h-full bg-white cursor-crosshair touch-none rounded-lg"
+      aria-label="Drawing and Equation Canvas"
+    />
   );
 }
-

@@ -11,8 +11,9 @@ import { Label } from '@/components/ui/label';
 import { TutorialList } from '@/components/TutorialList';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser } from 'lucide-react';
+import { Download, Sparkles, Calculator, Palette as PaletteIcon, Eraser, Settings } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import type { EnhanceDoodleInput, EnhanceDoodleOutput } from '@/ai/flows/enhance-doodle';
 import { enhanceDoodle } from '@/ai/flows/enhance-doodle';
@@ -25,13 +26,16 @@ type Mode = 'doodle' | 'equation';
 
 export function MagicCanvasSection() {
   const [mode, setMode] = useState<Mode>('doodle');
-  const [prompt, setPrompt] = useState(''); // For doodle style
+  const [prompt, setPrompt] = useState('');
   const [enhancedArtwork, setEnhancedArtwork] = useState<EnhanceDoodleOutput | null>(null);
   const [originalDoodleDataUrl, setOriginalDoodleDataUrl] = useState<string | null>(null);
   const [solution, setSolution] = useState<SolveEquationOutput | null>(null);
   const [tutorials, setTutorials] = useState<RecommendTutorialsOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [clearCanvasSignal, setClearCanvasSignal] = useState(false);
+
+  const [drawingColor, setDrawingColor] = useState('#000000');
+  const [drawingLineWidth, setDrawingLineWidth] = useState(5);
 
   const { toast } = useToast();
   const getCanvasDataUrlRef = useRef<() => string | null>(null);
@@ -50,7 +54,6 @@ export function MagicCanvasSection() {
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode);
     resetOutputs();
-    // Optionally clear prompt if switching away from doodle mode
     if (newMode !== 'doodle') {
       setPrompt('');
     }
@@ -62,7 +65,7 @@ export function MagicCanvasSection() {
 
   const onCanvasActuallyCleared = () => {
     resetOutputs();
-    setClearCanvasSignal(false); // Reset signal
+    setClearCanvasSignal(false);
   };
 
   const handleProcessCanvas = async () => {
@@ -72,17 +75,13 @@ export function MagicCanvasSection() {
       toast({ title: 'Error', description: 'Could not get canvas data. Please draw something.', variant: 'destructive' });
       return;
     }
-
-    // Blank canvas check
+    
     const img = new window.Image();
     img.src = canvasDataUri;
     try {
       await new Promise((resolve, reject) => {
         img.onload = resolve;
-        img.onerror = (e) => {
-          console.error("Image load error for blank check:", e);
-          reject(new Error('Image load error for blank check'));
-        }
+        img.onerror = (e) => reject(new Error('Image load error for blank check'));
       });
     } catch (error) {
         toast({ title: 'Error', description: 'Could not load image from canvas for validation.', variant: 'destructive' });
@@ -90,6 +89,10 @@ export function MagicCanvasSection() {
     }
 
     const tempCanvas = document.createElement('canvas');
+    if (img.width === 0 || img.height === 0) { // Check if canvas was not rendered yet
+        toast({ title: 'Empty Canvas', description: 'Please draw or write something on the canvas.', variant: 'destructive' });
+        return;
+    }
     tempCanvas.width = img.width;
     tempCanvas.height = img.height;
     const ctx = tempCanvas.getContext('2d');
@@ -102,7 +105,6 @@ export function MagicCanvasSection() {
     const { data } = imageData;
     let isBlank = true;
     for (let i = 0; i < data.length; i += 4) {
-        // Check if pixel is not opaque white (255,255,255,255) and is not fully transparent (alpha=0)
         if (!(data[i] === 255 && data[i+1] === 255 && data[i+2] === 255 && data[i+3] === 255) && data[i+3] !== 0) {
              isBlank = false;
             break;
@@ -123,14 +125,12 @@ export function MagicCanvasSection() {
     resetOutputs();
     if (mode === 'doodle') setOriginalDoodleDataUrl(canvasDataUri);
 
-
     try {
       if (mode === 'doodle') {
         const enhanceInput: EnhanceDoodleInput = { doodleDataUri: canvasDataUri, prompt };
         const enhanceOutput = await enhanceDoodle(enhanceInput);
         setEnhancedArtwork(enhanceOutput);
         toast({ title: 'Doodle Enhanced!', description: 'Your artwork is ready below.' });
-
         const recommendInput: RecommendTutorialsInput = { query: prompt };
         const recommendOutput = await recommendTutorials(recommendInput);
         setTutorials(recommendOutput);
@@ -139,7 +139,6 @@ export function MagicCanvasSection() {
         const solveOutput = await solveEquation(solveInput);
         setSolution(solveOutput);
         toast({ title: 'Equation Processed!', description: 'The solution is displayed below.' });
-
         const tutorialQuery = solveOutput.recognizedEquationText || "mathematical equation help";
         const recommendInput: RecommendTutorialsInput = { query: tutorialQuery };
         const recommendOutput = await recommendTutorials(recommendInput);
@@ -173,13 +172,12 @@ export function MagicCanvasSection() {
   const getButtonText = () => mode === 'doodle' ? 'Enhance Doodle' : 'Solve Equation';
   
   useEffect(() => {
-    // Reset outputs when mode changes to avoid showing irrelevant results
     resetOutputs();
   }, [mode]);
 
   return (
-    <div className="space-y-6 p-2 md:p-4">
-      <Card className="shadow-xl">
+    <div className="space-y-6 p-2 md:p-4 h-full flex flex-col">
+      <Card className="shadow-xl flex flex-col flex-grow">
         <CardHeader>
           <CardTitle className="font-headline text-2xl flex items-center gap-2">
             {mode === 'doodle' ? <PaletteIcon className="h-7 w-7 text-primary" /> : <Calculator className="h-7 w-7 text-primary" />}
@@ -187,31 +185,66 @@ export function MagicCanvasSection() {
           </CardTitle>
           <CardDescription>{getDescription()}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-4">
-            <Label className="text-base font-semibold">Mode:</Label>
-            <RadioGroup defaultValue="doodle" onValueChange={(value) => handleModeChange(value as Mode)} className="flex gap-4">
+
+        <CardContent className="space-y-4 flex flex-col flex-grow">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <RadioGroup defaultValue="doodle" onValueChange={(value) => handleModeChange(value as Mode)} className="flex gap-4 items-center">
+              <Label className="text-base font-semibold hidden sm:block">Mode:</Label>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="doodle" id="r-doodle" />
-                <Label htmlFor="r-doodle" className="text-base flex items-center gap-1 cursor-pointer"><PaletteIcon size={18}/> Doodle Art</Label>
+                <Label htmlFor="r-doodle" className="text-base flex items-center gap-1 cursor-pointer"><PaletteIcon size={18}/> Doodle</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="equation" id="r-equation" />
-                <Label htmlFor="r-equation" className="text-base flex items-center gap-1 cursor-pointer"><Calculator size={18}/> Equation Solver</Label>
+                <Label htmlFor="r-equation" className="text-base flex items-center gap-1 cursor-pointer"><Calculator size={18}/> Equation</Label>
               </div>
             </RadioGroup>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Canvas Settings">
+                  <Settings className="h-5 w-5" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-4 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="color-picker-popover" className="flex items-center gap-1">
+                    <PaletteIcon size={16} className="text-primary" /> Color
+                  </Label>
+                  <Input
+                    id="color-picker-popover"
+                    type="color"
+                    value={drawingColor}
+                    onChange={(e) => setDrawingColor(e.target.value)}
+                    className="w-full h-10 p-1 rounded-md border-input"
+                    aria-label="Select drawing color"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="line-width-popover" className="flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pencil-line text-primary"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/><path d="m15 5 3 3"/></svg>
+                     Brush Size
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="line-width-popover"
+                      type="range"
+                      min="1"
+                      max="50" // Increased max line width
+                      value={drawingLineWidth}
+                      onChange={(e) => setDrawingLineWidth(Number(e.target.value))}
+                      className="w-full accent-primary cursor-pointer"
+                      aria-label="Select line width"
+                    />
+                    <span className="text-sm w-8 text-center tabular-nums">{drawingLineWidth}</span>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
-          <DoodleCanvas
-            width={600}
-            height={350}
-            getCanvasDataUrl={setGetCanvasDataUrl}
-            clearCanvasSignal={clearCanvasSignal}
-            onClear={onCanvasActuallyCleared}
-          />
-
           {mode === 'doodle' && (
-            <div>
+            <div className="pt-2">
               <Label htmlFor="style-prompt" className="text-base">Artwork Style Prompt</Label>
               <Input
                 id="style-prompt"
@@ -224,15 +257,29 @@ export function MagicCanvasSection() {
               />
             </div>
           )}
+          
+          <div className="flex-grow relative border border-input rounded-lg shadow-inner overflow-hidden min-h-[300px] sm:min-h-[400px] md:min-h-[500px]">
+            <DoodleCanvas
+              getCanvasDataUrl={setGetCanvasDataUrl}
+              clearCanvasSignal={clearCanvasSignal}
+              onClear={onCanvasActuallyCleared}
+              color={drawingColor}
+              lineWidth={drawingLineWidth}
+            />
+          </div>
+          
+          <div className="flex justify-center pt-2">
+            <Button variant="ghost" size="icon" onClick={handleCanvasClearRequest} aria-label="Clear Canvas">
+              <Eraser size={24} />
+            </Button>
+          </div>
         </CardContent>
-        <CardFooter className="flex flex-col sm:flex-row gap-4 justify-center">
+
+        <CardFooter className="flex flex-col sm:flex-row gap-4 justify-center mt-auto pt-6">
           <Button onClick={handleProcessCanvas} disabled={isLoading} className="w-full sm:w-auto text-base py-3 px-6">
             {isLoading ? <LoadingSpinner className="mr-2" /> : getButtonIcon()}
             {getButtonText()}
           </Button>
-           <Button variant="outline" onClick={handleCanvasClearRequest} className="w-full sm:w-auto text-base py-3 px-6 gap-2">
-             <Eraser size={18} /> Clear Canvas
-           </Button>
         </CardFooter>
       </Card>
 
