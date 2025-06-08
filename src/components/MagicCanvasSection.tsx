@@ -90,6 +90,17 @@ export function MagicCanvasSection(): JSX.Element {
     getCanvasDataUrlRef.current = callback;
   }, []);
 
+  const triggerHapticFeedback = (pattern: VibratePattern = 50) => {
+    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+      } catch (error) {
+        // Vibration might be unsupported or denied by user settings, silently fail.
+        console.warn('Haptic feedback failed:', error);
+      }
+    }
+  };
+
   const resetLocalOutputs = () => {
     setCurrentEnhancedArtworkUri(null);
     setCurrentOriginalDoodleDataUrl(null);
@@ -109,6 +120,7 @@ export function MagicCanvasSection(): JSX.Element {
   };
 
   const handleCanvasClearRequest = () => {
+    triggerHapticFeedback();
     setClearCanvasSignal(true);
   };
 
@@ -122,6 +134,7 @@ export function MagicCanvasSection(): JSX.Element {
   };
 
   const handleProcessCanvas = async () => {
+    triggerHapticFeedback();
     const canvasDataUri = getCanvasDataUrlRef.current
       ? getCanvasDataUrlRef.current()
       : null;
@@ -184,8 +197,8 @@ export function MagicCanvasSection(): JSX.Element {
     let isBlank = true;
     for (let i = 0; i < data.length; i += 4) {
       if (
-        !(data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255 && data[i+3] === 255) && // Not opaque white
-        data[i + 3] !== 0 // Not fully transparent
+        !(data[i] === 255 && data[i + 1] === 255 && data[i + 2] === 255 && data[i+3] === 255) && 
+        data[i + 3] !== 0 
       ) {
         isBlank = false;
         break;
@@ -338,8 +351,8 @@ export function MagicCanvasSection(): JSX.Element {
               <p>Clear Canvas</p>
             </TooltipContent>
           </Tooltip>
-
-          <Popover> {/* Popover root starts here */}
+          
+          <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
                 <PopoverTrigger asChild>
@@ -472,7 +485,7 @@ export function MagicCanvasSection(): JSX.Element {
                 </div>
               </div>
             </PopoverContent>
-          </Popover> {/* Popover root ends here */}
+          </Popover>
 
 
           <Tooltip>
@@ -523,7 +536,7 @@ export function MagicCanvasSection(): JSX.Element {
               </DialogTitle>
             </DialogHeader>
             <div className="flex-grow overflow-y-auto space-y-4 p-1">
-              {isLoading && !currentEnhancedArtworkUri && !currentSolution && ( // Show loading only if no content is ready
+              {isLoading && !currentEnhancedArtworkUri && !currentSolution && ( 
                 <div className="text-center py-10">
                   <LoadingSpinner size={48} />
                   <p className="text-muted-foreground mt-2">Processing...</p>
