@@ -115,8 +115,8 @@ body {
       transform: scale(1) translate(-50%, -50%);
     }
     50% {
-      opacity: 0.4; /* Increased slightly for better visibility */
-      transform: scale(1.15) translate(-50%, -50%);
+      opacity: 0.7; /* Increased for better visibility */
+      transform: scale(1.25) translate(-50%, -50%); /* Increased scale */
     }
   }
 
@@ -125,7 +125,7 @@ body {
     inset: 0;
     pointer-events: none;
     overflow: hidden;
-    z-index: 10; 
+    z-index: 10;
   }
 
   .mist-overlay::before {
@@ -133,9 +133,9 @@ body {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 200%; 
+    width: 200%;
     height: 200%;
-    background-image: radial-gradient(circle, hsla(var(--primary), 0.15) 0%, hsla(var(--primary), 0.05) 40%, transparent 70%);
+    background-image: radial-gradient(circle, hsla(var(--primary), 0.3) 0%, hsla(var(--primary), 0.15) 40%, transparent 70%); /* Increased alpha */
     border-radius: 50%;
     animation: magical-mist-pulse 3s infinite ease-in-out;
     transform-origin: center center;
@@ -149,10 +149,10 @@ body {
     top: 50%;
     width: 250%;
     height: 250%;
-    background-image: radial-gradient(circle, hsla(var(--accent), 0.1) 0%, hsla(var(--accent), 0.03) 45%, transparent 75%);
+    background-image: radial-gradient(circle, hsla(var(--accent), 0.25) 0%, hsla(var(--accent), 0.1) 45%, transparent 75%); /* Increased alpha */
     border-radius: 50%;
     animation: magical-mist-pulse 3.5s infinite ease-in-out;
-    animation-delay: -1s; 
+    animation-delay: -1s;
     transform-origin: center center;
     opacity: 0;
   }
