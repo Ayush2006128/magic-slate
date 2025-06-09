@@ -139,7 +139,6 @@ body {
     border-radius: 50%;
     animation: magical-mist-pulse 3s infinite ease-in-out;
     transform-origin: center center;
-    /* transform: translate(-50%, -50%) scale(1); Initial transform set by keyframes */
     opacity: 0;
   }
 
@@ -155,7 +154,6 @@ body {
     animation: magical-mist-pulse 3.5s infinite ease-in-out;
     animation-delay: -1s; 
     transform-origin: center center;
-    /* transform: translate(-50%, -50%) scale(1); Initial transform set by keyframes */
     opacity: 0;
   }
 }
