@@ -328,13 +328,11 @@ export function MagicCanvasSection(): JSX.Element {
             color={drawingColor}
             lineWidth={drawingLineWidth}
           />
+           {isLoading && (
+            <div className="mist-overlay"></div>
+          )}
         </div>
         
-        {/* Magical Mist Overlay - covers the entire component area */}
-        {isLoading && (
-          <div className="mist-overlay"></div>
-        )}
-
         {/* Floating Action Buttons */}
         <div className="fixed bottom-4 right-4 flex flex-col gap-3 z-50">
           <Tooltip>
@@ -373,7 +371,7 @@ export function MagicCanvasSection(): JSX.Element {
               </TooltipContent>
             </Tooltip>
             <PopoverContent
-              className="w-auto p-4 space-y-4"
+              className="w-auto p-4 space-y-4 mb-2"
               side="top"
               align="end"
             >
@@ -626,4 +624,3 @@ export function MagicCanvasSection(): JSX.Element {
     </TooltipProvider>
   );
 }
-
