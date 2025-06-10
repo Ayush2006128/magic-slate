@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, MutableRefObject } from 'react';
 import Image from 'next/image';
 import { DoodleCanvas } from '@/components/DoodleCanvas';
 import { Button } from '@/components/ui/button';
@@ -84,8 +83,7 @@ export function MagicCanvasSection(): JSX.Element {
   const [isOutputDialogOpen, setIsOutputDialogOpen] = useState(false);
 
   const { toast } = useToast();
-  const getCanvasDataUrlRef = useRef<() => string | null>(null);
-
+  const getCanvasDataUrlRef = useRef<(() => string | null) | null>(null) as MutableRefObject<(() => string | null) | null>;
   const setGetCanvasDataUrl = useCallback((callback: () => string | null) => {
     getCanvasDataUrlRef.current = callback;
   }, []);
