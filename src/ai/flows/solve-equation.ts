@@ -68,7 +68,20 @@ const searchGoogleTool = ai.defineTool(
   async (input) => {
     // STUB IMPLEMENTATION: In a real app, this would call a Google Search API.
     console.log(`[searchGoogleTool] STUB: Would search Google for: ${input.query}`);
-    // For this stub, we return an empty array of results, simulating a search that found nothing or an unconfigured API.
+    // For this stub, we return some sample results to test the UI.
+    // In a real implementation, these would come from an actual search API.
+    // Only return samples if a query was made by the LLM
+    if (input.query && input.query.trim() !== "") {
+        return {
+            results: [
+                { title: "Sample Math Help Site", link: "https://example.com/math-help", snippet: "A general site for math problems." },
+                { title: "Specific Equation Solver Online", link: "https://example.com/equation-solver", snippet: "Solve your equations here." },
+                { title: "Another Math Resource", link: "https://example.org/math-resource", snippet: "Additional math resources." },
+            ]
+        };
+    }
+    // Return empty if no query or an empty query was passed,
+    // although the LLM is expected to provide a relevant query.
     return { results: [] };
   }
 );
@@ -88,7 +101,7 @@ Then, solve the equation and provide the answer in the 'solution' field.
 
 If the recognized equation is complex, non-standard, or you believe external context would improve the solution's accuracy or provide a method, you **MAY** use the 'searchGoogleTool' with the 'recognizedEquationText' (or a refined query based on it) to find relevant mathematical resources online. The 'searchGoogleTool' will attempt to find web pages related to your query.
 
-If the 'searchGoogleTool' successfully returns a list of web page URLs from its 'results' (each with a 'link' field) AND you use information from those specific pages to derive your solution or method, list up to 3 of these URLs (from the 'link' field of the tool's results) in the 'sourceUrls' field of your output.
+If the 'searchGoogleTool' successfully returns a list of web page URLs from its 'results' (each with a 'link' field) AND you use information from those specific pages to derive your solution or method, list up to 3 of these URLs (from the 'link' field of the tool's results) in the 'sourceUrls' field of your output. Prioritize relevance if more than 3 links are provided by the tool.
 Your 'sourceUrls' **MUST** come directly from the 'link' fields in the 'results' provided by 'searchGoogleTool' if you used it and it yielded useful links. **DO NOT** invent URLs or provide URLs not returned by the tool.
 If the tool is not used, or if it's used but doesn't return useful/relevant URLs in its 'results', then the 'sourceUrls' field should be omitted or be an empty array.
 
