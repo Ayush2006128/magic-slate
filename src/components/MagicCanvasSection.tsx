@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useCallback, useEffect, MutableRefObject } from 'react';
@@ -25,6 +26,7 @@ import {
   Eraser,
   Settings,
   PencilLine,
+  Wand2,
 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
@@ -327,7 +329,9 @@ export function MagicCanvasSection(): JSX.Element {
             lineWidth={drawingLineWidth}
           />
            {isLoading && (
-            <div className="mist-overlay"></div>
+            <div className="magic-wand-loading-overlay">
+              <Wand2 className="magic-wand-loading-icon" size={72} />
+            </div>
           )}
         </div>
         
