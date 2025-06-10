@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TutorialList } from '@/components/TutorialList';
+// Removed: import { TutorialList } from '@/components/TutorialList';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import {
@@ -49,14 +49,10 @@ import type {
 import { enhanceDoodle } from '@/ai/flows/enhance-doodle';
 import type {
   SolveEquationInput,
-  SolveEquationOutput,
+  SolveEquationOutput, // Updated type
 } from '@/ai/flows/solve-equation';
 import { solveEquation } from '@/ai/flows/solve-equation';
-import type {
-  RecommendTutorialsInput,
-  RecommendTutorialsOutput,
-} from '@/ai/flows/recommend-tutorials';
-import { recommendTutorials } from '@/ai/flows/recommend-tutorials';
+// Removed: RecommendTutorials related imports
 
 type Mode = 'doodle' | 'equation';
 
@@ -73,8 +69,7 @@ export function MagicCanvasSection(): JSX.Element {
     useState<string | null>(null);
   const [currentSolution, setCurrentSolution] =
     useState<SolveEquationOutput | null>(null);
-  const [currentTutorials, setCurrentTutorials] =
-    useState<RecommendTutorialsOutput | null>(null);
+  // Removed: const [currentTutorials, setCurrentTutorials] = useState<RecommendTutorialsOutput | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [clearCanvasSignal, setClearCanvasSignal] = useState(false);
@@ -95,7 +90,6 @@ export function MagicCanvasSection(): JSX.Element {
       try {
         navigator.vibrate(pattern);
       } catch (error) {
-        // Vibration might be unsupported or denied by user settings, silently fail.
         console.warn('Haptic feedback failed:', error);
       }
     }
@@ -105,7 +99,7 @@ export function MagicCanvasSection(): JSX.Element {
     setCurrentEnhancedArtworkUri(null);
     setCurrentOriginalDoodleDataUrl(null);
     setCurrentSolution(null);
-    setCurrentTutorials(null);
+    // Removed: setCurrentTutorials(null);
   };
 
   const handleModeChange = (newMode: Mode) => {
@@ -219,7 +213,7 @@ export function MagicCanvasSection(): JSX.Element {
     if (mode === 'doodle') setCurrentOriginalDoodleDataUrl(canvasDataUri);
 
     try {
-      let tutorialsOutput: RecommendTutorialsOutput | null = null;
+      // Removed: let tutorialsOutput: RecommendTutorialsOutput | null = null;
       if (mode === 'doodle') {
         const currentPrompt = prompt.trim() || 'simple doodle';
         const enhanceInput: EnhanceDoodleInput = {
@@ -233,27 +227,20 @@ export function MagicCanvasSection(): JSX.Element {
           description: 'Your artwork is ready.',
         });
 
-        const recommendInput: RecommendTutorialsInput = {
-          query: currentPrompt,
-        };
-        tutorialsOutput = await recommendTutorials(recommendInput);
+        // Removed: recommendTutorials call for doodle mode
       } else if (mode === 'equation') {
         const solveInput: SolveEquationInput = {
           equationImageDataUri: canvasDataUri,
         };
         const solveOutput = await solveEquation(solveInput);
-        setCurrentSolution(solveOutput);
+        setCurrentSolution(solveOutput); // solveOutput now contains sourceUrls
         toast({
           title: 'Equation Processed!',
           description: 'The solution is ready.',
         });
-
-        const tutorialQuery =
-          solveOutput.recognizedEquationText || 'mathematical equation help';
-        const recommendInput: RecommendTutorialsInput = { query: tutorialQuery };
-        tutorialsOutput = await recommendTutorials(recommendInput);
+        // Removed: recommendTutorials call for equation mode
       }
-      setCurrentTutorials(tutorialsOutput);
+      // Removed: setCurrentTutorials(tutorialsOutput);
       setIsOutputDialogOpen(true);
     } catch (error) {
       console.error('Error processing canvas:', error);
@@ -604,13 +591,37 @@ export function MagicCanvasSection(): JSX.Element {
                   <p className="text-lg font-medium text-primary bg-secondary p-3 rounded-md whitespace-pre-wrap">
                     {currentSolution.solution}
                   </p>
+                  {currentSolution.sourceUrls && currentSolution.sourceUrls.length > 0 && (
+                    <div className="mt-4 pt-4 border-t">
+                      <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                        Sources:
+                      </h4>
+                      <ul className="space-y-1 list-disc list-inside pl-2">
+                        {currentSolution.sourceUrls.map((url, index) => (
+                          <li key={index} className="text-xs">
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:text-accent hover:underline break-all"
+                            >
+                              {(() => {
+                                try {
+                                  const parsedUrl = new URL(url);
+                                  return parsedUrl.hostname + (parsedUrl.pathname === '/' ? '' : parsedUrl.pathname);
+                                } catch {
+                                  return url.length > 70 ? url.substring(0, 67) + '...' : url;
+                                }
+                              })()}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
-
-              <TutorialList
-                tutorials={currentTutorials}
-                isLoading={isLoading && currentTutorials === null} 
-              />
+              {/* Removed: <TutorialList tutorials={currentTutorials} isLoading={isLoading && currentTutorials === null} /> */}
             </div>
             <DialogFooter className="mt-auto pt-4">
               <Button
