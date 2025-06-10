@@ -67,22 +67,9 @@ const searchGoogleTool = ai.defineTool(
   },
   async (input) => {
     // STUB IMPLEMENTATION: In a real app, this would call a Google Search API.
-    console.log(`[searchGoogleTool] STUB: Would search Google for: ${input.query}`);
-    // For this stub, we return some sample results to test the UI.
-    // In a real implementation, these would come from an actual search API.
-    // Only return samples if a query was made by the LLM
-    if (input.query && input.query.trim() !== "") {
-        return {
-            results: [
-                { title: "Sample Math Help Site", link: "https://example.com/math-help", snippet: "A general site for math problems." },
-                { title: "Specific Equation Solver Online", link: "https://example.com/equation-solver", snippet: "Solve your equations here." },
-                { title: "Another Math Resource", link: "https://example.org/math-resource", snippet: "Additional math resources." },
-            ]
-        };
-    }
-    // Return empty if no query or an empty query was passed,
-    // although the LLM is expected to provide a relevant query.
-    return { results: [] };
+    // This stub no longer returns sample data.
+    console.log(`[searchGoogleTool] STUB: Would search Google for: ${input.query}, but returning no results as per stub behavior.`);
+    return { results: [] }; // Always return empty results
   }
 );
 
