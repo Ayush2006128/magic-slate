@@ -57,13 +57,13 @@ const recommendTutorialsPrompt = ai.definePrompt({
   input: {schema: RecommendTutorialsInputSchema},
   output: {schema: RecommendTutorialsOutputSchema},
   tools: [searchYouTubeTutorialsTool], // Make the tool available to the LLM
-  prompt: `You are a helpful assistant. The user is looking for YouTube tutorials based on the following topic: {{{query}}}.
-Your primary task is to use the 'searchYouTubeTutorialsTool' to find relevant videos.
-Pass the user's '{{{query}}}' directly as the 'searchQuery' input to the 'searchYouTubeTutorialsTool'.
-The tool will return the tutorial titles and URLs in the required format.
-Your final response MUST be the direct output from this tool.
-If the tool indicates no tutorials were found (e.g., by returning empty lists for titles and URLs), your response should also consist of empty lists for tutorialTitles and tutorialUrls.
-Do not add any conversational text or summaries; only return the structured data from the tool.`,
+  prompt: `You are a helpful assistant. Your task is to find relevant YouTube tutorials for the user's query: {{{query}}}.
+You **MUST** use the \`searchYouTubeTutorialsTool\` to perform this search. Provide the user's \`{{{query}}}\` as the \`searchQuery\` to the tool.
+The tool will return a list of tutorial titles and their corresponding URLs.
+Your final response **MUST** be the structured data (tutorialTitles and tutorialUrls) exactly as returned by the \`searchYouTubeTutorialsTool\`.
+**DO NOT** invent, hallucinate, or provide any URLs or titles that do not come directly from the \`searchYouTubeTutorialsTool\`'s output.
+If the tool returns no tutorials (e.g., empty lists for titles and URLs, which can happen if the API call fails or no relevant videos are found), your response **MUST** also consist of empty lists for \`tutorialTitles\` and \`tutorialUrls\`.
+Do not add any conversational text, introductions, or summaries. Only return the structured \`RecommendTutorialsOutput\`.`,
 });
 
 const recommendTutorialsFlow = ai.defineFlow(
@@ -73,20 +73,23 @@ const recommendTutorialsFlow = ai.defineFlow(
     outputSchema: RecommendTutorialsOutputSchema,
   },
   async (input) => {
+    console.log('[recommendTutorialsFlow] Input:', JSON.stringify(input, null, 2));
+
     const { output, errors } = await recommendTutorialsPrompt(input);
 
     if (errors && errors.length > 0) {
-      console.error('Errors from recommendTutorialsPrompt (YouTube API integration):', errors);
+      console.error('[recommendTutorialsFlow] Errors from recommendTutorialsPrompt:', JSON.stringify(errors, null, 2));
       // If the LLM itself or the tool interaction caused an error, return empty.
-      // The tool itself handles API errors by returning empty lists, which the prompt guides the LLM to pass through.
       return { tutorialTitles: [], tutorialUrls: [] };
     }
     
     if (!output) {
-      // This case means the LLM failed to produce a structured output as expected.
-      console.warn('recommendTutorialsPrompt did not produce an output.');
+      console.warn('[recommendTutorialsFlow] recommendTutorialsPrompt did not produce a structured output.');
       return { tutorialTitles: [], tutorialUrls: [] };
     }
+
+    console.log('[recommendTutorialsFlow] Output from prompt:', JSON.stringify(output, null, 2));
     return output;
   }
 );
+
