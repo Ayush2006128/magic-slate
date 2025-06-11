@@ -46,6 +46,6 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: 'en',
     dir: 'ltr',
     scope: '/',
-    prefer_related_applications: false
+    prefer_related_applications: false,
   }
 }

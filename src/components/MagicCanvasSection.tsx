@@ -69,7 +69,6 @@ export function MagicCanvasSection(): JSX.Element {
     useState<string | null>(null);
   const [currentSolution, setCurrentSolution] =
     useState<SolveEquationOutput | null>(null);
-  // Removed: const [currentTutorials, setCurrentTutorials] = useState<RecommendTutorialsOutput | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [clearCanvasSignal, setClearCanvasSignal] = useState(false);

@@ -120,7 +120,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: hsla(var(--background), 0.3); /* Subtle dimming */
+    background-color: hsla(321, 92%, 35%, 0.285); /* Subtle dimming */
     z-index: 15; /* Above canvas, below mode selector/FABs */
     pointer-events: none; /* Allows clicks on elements behind if necessary, though it's a loading state */
   }
