@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -25,8 +24,8 @@ export function AppTourDialog({ isOpen, onClose }: AppTourDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="sm:max-w-md md:max-w-lg max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md md:max-w-lg max-h-[90vh] flex flex-col gap-0">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-2xl flex items-center gap-2 font-headline">
             <Wand2 className="h-6 w-6 text-primary" />
             Welcome to Magic Slate!
@@ -35,8 +34,8 @@ export function AppTourDialog({ isOpen, onClose }: AppTourDialogProps) {
             Discover how Magic Slate can transform your ideas with AI.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-grow pr-3 my-4">
-          <div className="space-y-6 text-sm">
+        <ScrollArea className="flex-1 min-h-0 px-1 py-4">
+          <div className="space-y-6 text-sm pr-4">
             <section>
               <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
                 <Palette className="h-5 w-5 text-primary" /> Doodle Mode: Unleash Creativity
@@ -114,7 +113,7 @@ export function AppTourDialog({ isOpen, onClose }: AppTourDialogProps) {
             </section>
           </div>
         </ScrollArea>
-        <DialogFooter className="mt-auto pt-4 border-t">
+        <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">
           <Button onClick={onClose} className="w-full">
             Let's Get Started!
           </Button>

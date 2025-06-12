@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useCallback, useEffect, MutableRefObject } from 'react';
@@ -517,13 +516,13 @@ export function MagicCanvasSection(): JSX.Element {
             }
           }}
         >
-          <DialogContent className="sm:max-w-lg md:max-w-2xl max-h-[80vh] flex flex-col">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-lg md:max-w-2xl max-h-[90vh] flex flex-col gap-0">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle className="font-headline">
                 {mode === 'doodle' ? 'Enhanced Artwork' : 'Equation Solved'}
               </DialogTitle>
             </DialogHeader>
-            <div className="flex-grow overflow-y-auto space-y-4 p-1">
+            <div className="flex-1 overflow-y-auto min-h-0 px-1 py-4">
               {isLoading && !currentEnhancedArtworkUri && !currentSolution && ( 
                 <div className="text-center py-10">
                   <LoadingSpinner size={48} />
@@ -622,7 +621,7 @@ export function MagicCanvasSection(): JSX.Element {
               )}
               {/* Removed: <TutorialList tutorials={currentTutorials} isLoading={isLoading && currentTutorials === null} /> */}
             </div>
-            <DialogFooter className="mt-auto pt-4">
+            <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">
               <Button
                 variant="outline"
                 onClick={() => setIsOutputDialogOpen(false)}
