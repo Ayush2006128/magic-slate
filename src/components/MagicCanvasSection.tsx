@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useCallback, useEffect, MutableRefObject } from 'react';
@@ -14,7 +15,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-// Removed: import { TutorialList } from '@/components/TutorialList';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import {
@@ -48,17 +48,20 @@ import type {
 import { enhanceDoodle } from '@/ai/flows/enhance-doodle';
 import type {
   SolveEquationInput,
-  SolveEquationOutput, // Updated type
+  SolveEquationOutput,
 } from '@/ai/flows/solve-equation';
 import { solveEquation } from '@/ai/flows/solve-equation';
-// Removed: RecommendTutorials related imports
 
 type Mode = 'doodle' | 'equation';
 
 const QUICK_COLOR_BLACK = '#000000';
 const QUICK_COLOR_RED = '#ff0000';
 
-export function MagicCanvasSection(): JSX.Element {
+interface MagicCanvasSectionProps {
+  userApiKey: string | null; // Accept userApiKey as a prop
+}
+
+export function MagicCanvasSection({ userApiKey }: MagicCanvasSectionProps): JSX.Element {
   const [mode, setMode] = useState<Mode>('doodle');
   const [prompt, setPrompt] = useState('');
 
@@ -97,7 +100,6 @@ export function MagicCanvasSection(): JSX.Element {
     setCurrentEnhancedArtworkUri(null);
     setCurrentOriginalDoodleDataUrl(null);
     setCurrentSolution(null);
-    // Removed: setCurrentTutorials(null);
   };
 
   const handleModeChange = (newMode: Mode) => {
@@ -126,6 +128,16 @@ export function MagicCanvasSection(): JSX.Element {
   };
 
   const handleProcessCanvas = async () => {
+    if (!userApiKey) {
+      toast({
+        title: 'API Key Required',
+        description: 'Please provide your Google AI API key to use AI features. You might need to refresh the page if you just entered it.',
+        variant: 'destructive',
+      });
+      // Optionally, trigger the API key dialog again or guide the user.
+      return;
+    }
+
     triggerHapticFeedback();
     const canvasDataUri = getCanvasDataUrlRef.current
       ? getCanvasDataUrlRef.current()
@@ -211,12 +223,12 @@ export function MagicCanvasSection(): JSX.Element {
     if (mode === 'doodle') setCurrentOriginalDoodleDataUrl(canvasDataUri);
 
     try {
-      // Removed: let tutorialsOutput: RecommendTutorialsOutput | null = null;
       if (mode === 'doodle') {
         const currentPrompt = prompt.trim() || 'simple doodle';
         const enhanceInput: EnhanceDoodleInput = {
           doodleDataUri: canvasDataUri,
           prompt: currentPrompt,
+          userApiKey: userApiKey, // Pass the API key
         };
         const enhanceOutput = await enhanceDoodle(enhanceInput);
         setCurrentEnhancedArtworkUri(enhanceOutput.enhancedArtworkDataUri);
@@ -224,27 +236,24 @@ export function MagicCanvasSection(): JSX.Element {
           title: 'Doodle Enhanced!',
           description: 'Your artwork is ready.',
         });
-
-        // Removed: recommendTutorials call for doodle mode
       } else if (mode === 'equation') {
         const solveInput: SolveEquationInput = {
           equationImageDataUri: canvasDataUri,
+          userApiKey: userApiKey, // Pass the API key
         };
         const solveOutput = await solveEquation(solveInput);
-        setCurrentSolution(solveOutput); // solveOutput now contains sourceUrls
+        setCurrentSolution(solveOutput);
         toast({
           title: 'Equation Processed!',
           description: 'The solution is ready.',
         });
-        // Removed: recommendTutorials call for equation mode
       }
-      // Removed: setCurrentTutorials(tutorialsOutput);
       setIsOutputDialogOpen(true);
     } catch (error) {
       console.error('Error processing canvas:', error);
       toast({
-        title: 'Error',
-        description: `Could not process the canvas content. Please try again. ${
+        title: 'Error Processing Canvas',
+        description: `Could not process the canvas content. This could be due to an invalid API key or a network issue. Please try again. ${
           error instanceof Error ? error.message : ''
         }`,
         variant: 'destructive',
@@ -619,7 +628,6 @@ export function MagicCanvasSection(): JSX.Element {
                   )}
                 </div>
               )}
-              {/* Removed: <TutorialList tutorials={currentTutorials} isLoading={isLoading && currentTutorials === null} /> */}
             </div>
             <DialogFooter className="flex-shrink-0 pt-4 border-t mt-4">
               <Button
