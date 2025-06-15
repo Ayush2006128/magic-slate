@@ -58,10 +58,11 @@ const QUICK_COLOR_BLACK = '#000000';
 const QUICK_COLOR_RED = '#ff0000';
 
 interface MagicCanvasSectionProps {
-  userApiKey: string | null; // Accept userApiKey as a prop
+  userApiKey: string | null;
+  onInvalidApiKey: () => void; 
 }
 
-export function MagicCanvasSection({ userApiKey }: MagicCanvasSectionProps): JSX.Element {
+export function MagicCanvasSection({ userApiKey, onInvalidApiKey }: MagicCanvasSectionProps): JSX.Element {
   const [mode, setMode] = useState<Mode>('doodle');
   const [prompt, setPrompt] = useState('');
 
@@ -131,10 +132,10 @@ export function MagicCanvasSection({ userApiKey }: MagicCanvasSectionProps): JSX
     if (!userApiKey) {
       toast({
         title: 'API Key Required',
-        description: 'Please provide your Google AI API key to use AI features. You might need to refresh the page if you just entered it.',
+        description: 'Please enter your Google AI API key to use AI features.',
         variant: 'destructive',
       });
-      // Optionally, trigger the API key dialog again or guide the user.
+      onInvalidApiKey(); // Prompt for key if it's missing
       return;
     }
 
@@ -228,7 +229,7 @@ export function MagicCanvasSection({ userApiKey }: MagicCanvasSectionProps): JSX
         const enhanceInput: EnhanceDoodleInput = {
           doodleDataUri: canvasDataUri,
           prompt: currentPrompt,
-          userApiKey: userApiKey, // Pass the API key
+          userApiKey: userApiKey,
         };
         const enhanceOutput = await enhanceDoodle(enhanceInput);
         setCurrentEnhancedArtworkUri(enhanceOutput.enhancedArtworkDataUri);
@@ -239,7 +240,7 @@ export function MagicCanvasSection({ userApiKey }: MagicCanvasSectionProps): JSX
       } else if (mode === 'equation') {
         const solveInput: SolveEquationInput = {
           equationImageDataUri: canvasDataUri,
-          userApiKey: userApiKey, // Pass the API key
+          userApiKey: userApiKey,
         };
         const solveOutput = await solveEquation(solveInput);
         setCurrentSolution(solveOutput);
@@ -251,13 +252,32 @@ export function MagicCanvasSection({ userApiKey }: MagicCanvasSectionProps): JSX
       setIsOutputDialogOpen(true);
     } catch (error) {
       console.error('Error processing canvas:', error);
-      toast({
-        title: 'Error Processing Canvas',
-        description: `Could not process the canvas content. This could be due to an invalid API key or a network issue. Please try again. ${
-          error instanceof Error ? error.message : ''
-        }`,
-        variant: 'destructive',
-      });
+      const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
+      // Heuristic for API key related errors
+      if (errorMessage.includes('api key') || 
+          errorMessage.includes('permission denied') || 
+          errorMessage.includes('unauthenticated') ||
+          errorMessage.includes('quota') ||
+          errorMessage.includes('access token') ||
+          errorMessage.includes('forbidden') ||
+          (error instanceof Error && (error as any).status === 401) || // Unauthorized
+          (error instanceof Error && (error as any).status === 403)    // Forbidden
+         ) {
+        toast({
+          title: 'API Key Error',
+          description: 'There was an issue with your API key. It might be invalid, expired, or out of quota. Please re-enter your key.',
+          variant: 'destructive',
+        });
+        onInvalidApiKey(); // This will clear cookies and re-prompt
+      } else {
+        toast({
+          title: 'Error Processing Canvas',
+          description: `Could not process the canvas content. ${
+            error instanceof Error ? error.message : ''
+          }`,
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsLoading(false);
     }
