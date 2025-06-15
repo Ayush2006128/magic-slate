@@ -35,8 +35,8 @@ export function AppTourDialog({ isOpen, onClose }: AppTourDialogProps) {
             Discover how Magic Slate can transform your ideas with AI.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 min-h-0 px-1 py-4">
-          <div className="space-y-6 text-sm pr-4">
+        <ScrollArea className="flex-1 min-h-0"> {/* Ensure ScrollArea can take up space and scroll */}
+          <div className="space-y-6 text-sm p-4"> {/* Apply padding to the content div */}
             <section>
               <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
                 <Palette className="h-5 w-5 text-primary" /> Doodle Mode: Unleash Creativity
