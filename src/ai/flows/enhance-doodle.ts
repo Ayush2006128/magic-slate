@@ -12,7 +12,7 @@
 import {ai} from '@/ai/genkit';
 import { googleAI as googleAIPlugin } from '@genkit-ai/googleai';
 import type { ModelReference } from 'genkit/model';
-import {z} from 'genkit';
+import {z, genkit} from 'genkit';
 
 const EnhanceDoodleInputSchema = z.object({
   doodleDataUri: z
@@ -33,28 +33,25 @@ const EnhanceDoodleOutputSchema = z.object({
 export type EnhanceDoodleOutput = z.infer<typeof EnhanceDoodleOutputSchema>;
 
 export async function enhanceDoodle(input: EnhanceDoodleInput): Promise<EnhanceDoodleOutput> {
-  let modelToUse: ModelReference<any> | string = 'googleai/gemini-2.0-flash-exp';
-  const modelNameOnly = 'gemini-2.0-flash-exp';
+  let aiInstance = ai; // Default to global instance
+  const modelName = 'googleai/gemini-2.0-flash-exp';
 
   if (input.userApiKey) {
     try {
-      const userConfiguredGoogleAI = googleAIPlugin({ apiKey: input.userApiKey });
-      modelToUse = userConfiguredGoogleAI.model(modelNameOnly);
+      aiInstance = genkit({
+        plugins: [googleAIPlugin({ apiKey: input.userApiKey })],
+        model: modelName,
+      });
     } catch (e) {
       console.error("Failed to configure Google AI with user API key:", e);
-      // If userApiKey is invalid, modelToUse remains the string model name.
-      // ai.generate will then rely on the global 'ai' instance.
-      // If global 'ai' has no key (e.g., .env is empty), ai.generate will fail,
-      // which is caught by MagicCanvasSection and triggers onInvalidApiKey.
+      // Fallback behavior: using global 'ai' instance
+      // If global 'ai' has no key, this will fail and be caught by MagicCanvasSection.
     }
   } else {
-    // This case should ideally not be reached if MagicCanvasSection gates calls properly,
-    // but if it is, it relies on the global 'ai' instance.
     console.warn("enhanceDoodle called without a userApiKey. Relying on global Genkit config.");
   }
   
-  const {media} = await ai.generate({
-    model: modelToUse,
+  const {media} = await aiInstance.generate({
     prompt: [
       {media: {url: input.doodleDataUri}},
       {text: `Enhance this doodle into a beautiful artwork with the following style: ${input.prompt}.`},
