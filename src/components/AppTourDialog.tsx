@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Wand2, Palette, Calculator, Sparkles, Eraser, Settings, PencilLine, FileText } from 'lucide-react';
+import { Wand2, Palette, Calculator, Sparkles, Eraser, Settings, PencilLine } from 'lucide-react';
 
 interface AppTourDialogProps {
   isOpen: boolean;
@@ -35,8 +35,8 @@ export function AppTourDialog({ isOpen, onClose }: AppTourDialogProps) {
             Discover how Magic Slate can transform your ideas with AI.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 min-h-0"> {/* Ensure ScrollArea can take up space and scroll */}
-          <div className="space-y-6 text-sm p-4"> {/* Apply padding to the content div */}
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-6 text-sm p-4">
             <section>
               <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
                 <Palette className="h-5 w-5 text-primary" /> Doodle Mode: Unleash Creativity
@@ -101,16 +101,6 @@ export function AppTourDialog({ isOpen, onClose }: AppTourDialogProps) {
               <p className="text-muted-foreground">
                 That's the basics! We hope you enjoy using Magic Slate.
               </p>
-            </section>
-
-            <section className="mt-4 pt-4 border-t border-border/50">
-              <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                <FileText className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                <p>
-                  By using Magic Slate, you acknowledge our data practices. Our AI features send your canvas content and prompts to third-party AI providers for processing.
-                  Please review our Privacy Policy (found as PRIVACY_POLICY.md in the project files) for more details on how we handle your data.
-                </p>
-              </div>
             </section>
           </div>
         </ScrollArea>
