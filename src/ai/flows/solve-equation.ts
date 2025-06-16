@@ -1,4 +1,3 @@
-
 // Implements the Genkit flow for solving mathematical equations.
 'use server';
 
@@ -12,10 +11,9 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { googleAI as googleAIPlugin } from '@genkit-ai/googleai'; // Renamed import
+import { googleAI as googleAIPlugin } from '@genkit-ai/googleai';
 import type { ModelReference } from 'genkit/model';
 import type { ToolDefinition } from 'genkit/tool';
-// Removed: import { generate } from 'genkit/generate'; 
 import {z} from 'genkit';
 
 const SolveEquationInputSchema = z.object({
@@ -76,10 +74,6 @@ const searchGoogleTool: ToolDefinition<typeof SearchGoogleToolInputSchema, typeo
 ai.defineTool(searchGoogleTool);
 
 
-export async function solveEquation(input: SolveEquationInput): Promise<SolveEquationOutput> {
-  return solveEquationFlow(input);
-}
-
 const systemPrompt = `You are an expert mathematician. Your task is to interpret and solve the handwritten mathematical equation provided in the image.
 First, try to recognize the equation from the image and provide its text representation in 'recognizedEquationText'.
 Then, solve the equation and provide the answer in the 'solution' field.
@@ -95,7 +89,7 @@ Your primary goal is to provide an accurate solution. The search is an optional 
 If the image does not contain a clear mathematical equation or it's unreadable, the 'solution' field should state this.`;
 
 
-const solveEquationFlow = async (input: SolveEquationInput): Promise<SolveEquationOutput> => {
+export async function solveEquation(input: SolveEquationInput): Promise<SolveEquationOutput> {
   let modelToUse: ModelReference<any> | string = 'googleai/gemini-2.0-flash'; 
   const modelNameOnly = 'gemini-2.0-flash'; 
 
@@ -105,7 +99,11 @@ const solveEquationFlow = async (input: SolveEquationInput): Promise<SolveEquati
       modelToUse = userConfiguredGoogleAI.model(modelNameOnly);
     } catch (e) {
       console.error("Failed to configure Google AI with user API key for solveEquation:", e);
+      // Fallback behavior: modelToUse remains the string, ai.generate will use global 'ai' instance.
+      // If global 'ai' has no key, this will fail and be caught by MagicCanvasSection.
     }
+  } else {
+      console.warn("solveEquation called without a userApiKey. Relying on global Genkit config.");
   }
 
   const promptContent = [
@@ -127,5 +125,4 @@ const solveEquationFlow = async (input: SolveEquationInput): Promise<SolveEquati
     throw new Error('AI did not return a parsable output for solveEquation.');
   }
   return output;
-};
-
+}

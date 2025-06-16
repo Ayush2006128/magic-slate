@@ -10,7 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { googleAI as googleAIPlugin } from '@genkit-ai/googleai'; // Renamed import
+import { googleAI as googleAIPlugin } from '@genkit-ai/googleai';
 import type { ModelReference } from 'genkit/model';
 import {z} from 'genkit';
 
@@ -33,29 +33,27 @@ const EnhanceDoodleOutputSchema = z.object({
 export type EnhanceDoodleOutput = z.infer<typeof EnhanceDoodleOutputSchema>;
 
 export async function enhanceDoodle(input: EnhanceDoodleInput): Promise<EnhanceDoodleOutput> {
-  return enhanceDoodleFlow(input);
-}
-
-// Note: ai.definePrompt and ai.defineFlow are for global registration.
-// We are bypassing direct use of a predefined flow here to dynamically set the API key.
-// The `enhanceDoodleFlow` function below will handle the logic directly.
-
-const enhanceDoodleFlow = async (input: EnhanceDoodleInput): Promise<EnhanceDoodleOutput> => {
   let modelToUse: ModelReference<any> | string = 'googleai/gemini-2.0-flash-exp';
+  const modelNameOnly = 'gemini-2.0-flash-exp';
 
   if (input.userApiKey) {
     try {
       const userConfiguredGoogleAI = googleAIPlugin({ apiKey: input.userApiKey });
-      // Ensure the model name here matches one that the plugin instance can provide
-      modelToUse = userConfiguredGoogleAI.model('gemini-2.0-flash-exp');
+      modelToUse = userConfiguredGoogleAI.model(modelNameOnly);
     } catch (e) {
       console.error("Failed to configure Google AI with user API key:", e);
-      // Fallback to default model or handle error appropriately
-      // For now, it will use the string model name, relying on global config / env key
+      // If userApiKey is invalid, modelToUse remains the string model name.
+      // ai.generate will then rely on the global 'ai' instance.
+      // If global 'ai' has no key (e.g., .env is empty), ai.generate will fail,
+      // which is caught by MagicCanvasSection and triggers onInvalidApiKey.
     }
+  } else {
+    // This case should ideally not be reached if MagicCanvasSection gates calls properly,
+    // but if it is, it relies on the global 'ai' instance.
+    console.warn("enhanceDoodle called without a userApiKey. Relying on global Genkit config.");
   }
   
-  const {media} = await ai.generate({ // Using the global 'ai' instance but with a potentially dynamic modelRef
+  const {media} = await ai.generate({
     model: modelToUse,
     prompt: [
       {media: {url: input.doodleDataUri}},
@@ -71,4 +69,4 @@ const enhanceDoodleFlow = async (input: EnhanceDoodleInput): Promise<EnhanceDood
   }
 
   return {enhancedArtworkDataUri: media.url};
-};
+}
