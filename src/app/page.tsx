@@ -22,9 +22,9 @@ export default function HomePage() {
 
   const clearApiCookiesAndResetState = () => {
     if (typeof window !== 'undefined') {
-      setCookie(API_KEY_ENCRYPTED_COOKIE_NAME, '', -1); // Delete cookie
-      setCookie(API_KEY_IV_COOKIE_NAME, '', -1); // Delete cookie
-      setCookie(API_KEY_SALT_COOKIE_NAME, '', -1); // Delete cookie
+      setCookie(API_KEY_ENCRYPTED_COOKIE_NAME, '', -1); 
+      setCookie(API_KEY_IV_COOKIE_NAME, '', -1); 
+      setCookie(API_KEY_SALT_COOKIE_NAME, '', -1); 
       setUserApiKey(null);
       setShowApiKeyDialog(true);
     }
@@ -40,15 +40,18 @@ export default function HomePage() {
         const salt = getCookie(API_KEY_SALT_COOKIE_NAME);
 
         if (encryptedKey && iv && salt) {
-          const decryptedKey = await decryptData(encryptedKey, iv, salt);
-          if (decryptedKey) {
-            setUserApiKey(decryptedKey);
-          } else {
-            // Decryption failed or key is invalid, clear and prompt again
+          try {
+            const decryptedKey = await decryptData(encryptedKey, iv, salt);
+            if (decryptedKey) {
+              setUserApiKey(decryptedKey);
+            } else {
+              clearApiCookiesAndResetState();
+            }
+          } catch (error) {
+            console.error("Error decrypting API key:", error);
             clearApiCookiesAndResetState();
           }
         } else {
-          // No API key found, prompt the user
           setShowApiKeyDialog(true);
         }
         setIsApiKeyChecked(true); 
@@ -83,7 +86,7 @@ export default function HomePage() {
         setUserApiKey(apiKey); 
         setShowApiKeyDialog(false); 
       } else {
-        throw new Error("Encryption failed");
+        throw new Error("Encryption failed. Could not securely store the API key.");
       }
     }
   };
@@ -100,9 +103,6 @@ export default function HomePage() {
           <ApiKeyDialog
             isOpen={showApiKeyDialog}
             onClose={() => {
-              // If user closes dialog without submitting a key, and no key is set,
-              // we might want to keep it open or handle this state.
-              // For now, allow close, but AI features won't work.
               setShowApiKeyDialog(false)
             }}
             onApiKeySubmit={handleApiKeySubmit}
