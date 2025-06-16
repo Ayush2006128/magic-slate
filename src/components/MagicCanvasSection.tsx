@@ -135,7 +135,7 @@ export function MagicCanvasSection({ userApiKey, onInvalidApiKey }: MagicCanvasS
         description: 'Please enter your Google AI API key to use AI features.',
         variant: 'destructive',
       });
-      onInvalidApiKey(); // Prompt for key if it's missing
+      onInvalidApiKey(); 
       return;
     }
 
@@ -253,27 +253,29 @@ export function MagicCanvasSection({ userApiKey, onInvalidApiKey }: MagicCanvasS
     } catch (error) {
       console.error('Error processing canvas:', error);
       const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
-      // Heuristic for API key related errors
-      if (errorMessage.includes('api key') || 
-          errorMessage.includes('permission denied') || 
-          errorMessage.includes('unauthenticated') ||
-          errorMessage.includes('quota') ||
-          errorMessage.includes('access token') ||
-          errorMessage.includes('forbidden') ||
-          (error instanceof Error && (error as any).status === 401) || // Unauthorized
-          (error instanceof Error && (error as any).status === 403)    // Forbidden
-         ) {
+      
+      const isApiKeyError = 
+        errorMessage.includes('api key') || 
+        errorMessage.includes('permission denied') || 
+        errorMessage.includes('unauthenticated') ||
+        errorMessage.includes('quota') ||
+        errorMessage.includes('access token') ||
+        errorMessage.includes('forbidden') ||
+        (error instanceof Error && typeof (error as any).status === 'number' && [(error as any).status].includes(401)) ||
+        (error instanceof Error && typeof (error as any).status === 'number' && [(error as any).status].includes(403));
+
+      if (isApiKeyError) {
         toast({
           title: 'API Key Error',
-          description: 'There was an issue with your API key. It might be invalid, expired, or out of quota. Please re-enter your key.',
+          description: 'There was an issue with your API key. Please re-enter it.',
           variant: 'destructive',
         });
-        onInvalidApiKey(); // This will clear cookies and re-prompt
+        onInvalidApiKey();
       } else {
         toast({
           title: 'Error Processing Canvas',
-          description: `Could not process the canvas content. ${
-            error instanceof Error ? error.message : ''
+          description: `Could not process. ${
+            error instanceof Error ? error.message : 'Please try again.'
           }`,
           variant: 'destructive',
         });

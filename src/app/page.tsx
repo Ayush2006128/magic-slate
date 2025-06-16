@@ -1,11 +1,9 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { MagicCanvasSection } from '@/components/MagicCanvasSection';
-import { AppTourDialog } from '@/components/AppTourDialog';
-import { ApiKeyDialog } from '@/components/ApiKeyDialog';
-import { PrivacyNoticeDialog } from '@/components/PrivacyNoticeDialog';
+import { OnboardingDialog, type OnboardingStep } from '@/components/OnboardingDialog';
 import { getCookie, setCookie } from '@/lib/cookieUtils';
 import { encryptData, decryptData } from '@/lib/cryptoUtils';
 import { register } from '@/app/service_worker';
@@ -17,138 +15,176 @@ const API_KEY_IV_COOKIE_NAME = 'genkitUserApiKeyIV';
 const API_KEY_SALT_COOKIE_NAME = 'genkitUserApiKeySalt';
 
 export default function HomePage() {
-  const [showPrivacyNoticeDialog, setShowPrivacyNoticeDialog] = useState(false);
-  const [isPrivacyAcknowledged, setIsPrivacyAcknowledged] = useState(false);
-  
-  const [showTour, setShowTour] = useState(false);
-  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+  const [currentOnboardingStep, setCurrentOnboardingStep] = useState<OnboardingStep | 'done'>('done');
+  const [showOnboardingDialog, setShowOnboardingDialog] = useState(false);
   const [userApiKey, setUserApiKey] = useState<string | null>(null);
-  const [isApiKeyChecked, setIsApiKeyChecked] = useState(false);
+  
+  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
 
-  const clearApiCookiesAndResetState = () => {
+  const clearApiCookiesAndResetState = useCallback(() => {
     if (typeof window !== 'undefined') {
       setCookie(API_KEY_ENCRYPTED_COOKIE_NAME, '', -1); 
       setCookie(API_KEY_IV_COOKIE_NAME, '', -1); 
       setCookie(API_KEY_SALT_COOKIE_NAME, '', -1); 
       setUserApiKey(null);
-      setShowApiKeyDialog(true); // Re-prompt for API key
+      setCurrentOnboardingStep('apiKey');
+      setShowOnboardingDialog(true);
     }
-  };
+  }, []);
   
-  // Step 1: Check for Privacy Notice Acknowledgment
   useEffect(() => {
     register();
     if (typeof window !== 'undefined') {
-      const privacyAcknowledged = getCookie(PRIVACY_ACKNOWLEDGED_COOKIE_NAME);
-      if (privacyAcknowledged !== 'true') {
-        setShowPrivacyNoticeDialog(true);
-      } else {
-        setIsPrivacyAcknowledged(true);
-      }
-    }
-  }, []);
+      const privacyAcknowledged = getCookie(PRIVACY_ACKNOWLEDGED_COOKIE_NAME) === 'true';
+      const apiKeyEncrypted = getCookie(API_KEY_ENCRYPTED_COOKIE_NAME);
+      const tourFinished = getCookie(TOUR_COOKIE_NAME) === 'true';
 
-  // Step 2: Check for API Key (only if privacy notice is acknowledged)
-  useEffect(() => {
-    async function checkApiKey() {
-      if (typeof window !== 'undefined' && isPrivacyAcknowledged) {
-        const encryptedKey = getCookie(API_KEY_ENCRYPTED_COOKIE_NAME);
+      let nextStep: OnboardingStep | 'done' = 'done';
+
+      if (!privacyAcknowledged) {
+        nextStep = 'privacy';
+      } else if (!apiKeyEncrypted) {
+        nextStep = 'apiKey';
+      } else if (!tourFinished) {
+        nextStep = 'tour';
+      }
+      
+      setCurrentOnboardingStep(nextStep);
+      setShowOnboardingDialog(nextStep !== 'done');
+      
+      // If API key might exist, try to decrypt it
+      if (privacyAcknowledged && apiKeyEncrypted) {
         const iv = getCookie(API_KEY_IV_COOKIE_NAME);
         const salt = getCookie(API_KEY_SALT_COOKIE_NAME);
-
-        if (encryptedKey && iv && salt) {
-          try {
-            const decryptedKey = await decryptData(encryptedKey, iv, salt);
+        if (iv && salt) {
+          decryptData(apiKeyEncrypted, iv, salt).then(decryptedKey => {
             if (decryptedKey) {
               setUserApiKey(decryptedKey);
             } else {
-              clearApiCookiesAndResetState(); // Decryption failed
+              // Decryption failed or key invalid, but privacy was acknowledged.
+              // If current step became 'done' due to optimistic cookie check, revert to 'apiKey'.
+              if (getCurrentOnboardingStepBasedOnCookies() === 'done') {
+                clearApiCookiesAndResetState(); // This will set step to 'apiKey' and show dialog
+              }
             }
-          } catch (error) {
-            console.error("Error decrypting API key:", error);
-            clearApiCookiesAndResetState(); // Decryption error
-          }
+          }).catch(error => {
+            console.error("Error decrypting API key during initial check:", error);
+            if (getCurrentOnboardingStepBasedOnCookies() === 'done') {
+               clearApiCookiesAndResetState();
+            }
+          });
         } else {
-          setShowApiKeyDialog(true); // No key found
+           // Missing IV or Salt, API key effectively not set
+           if (nextStep === 'done') { // Only force API key step if all others were 'done'
+             setCurrentOnboardingStep('apiKey');
+             setShowOnboardingDialog(true);
+           }
         }
-        setIsApiKeyChecked(true); 
       }
     }
-    if (isPrivacyAcknowledged) { // Only run if privacy is acknowledged
-      checkApiKey();
-    }
-  }, [isPrivacyAcknowledged]);
+    setInitialCheckComplete(true);
+  }, [clearApiCookiesAndResetState]);
 
-  // Step 3: Check for App Tour (only if privacy acknowledged, API key checked, and API dialog not shown)
-  useEffect(() => {
-    if (isPrivacyAcknowledged && isApiKeyChecked && !showApiKeyDialog) {
-      const tourFinished = getCookie(TOUR_COOKIE_NAME);
-      if (tourFinished !== 'true') {
-        setShowTour(true);
-      }
-    }
-  }, [isPrivacyAcknowledged, isApiKeyChecked, showApiKeyDialog]);
+  // Helper to re-evaluate current onboarding step based on cookies
+  // This is useful for knowing where to go if a step "fails" like API key decryption
+  const getCurrentOnboardingStepBasedOnCookies = (): OnboardingStep | 'done' => {
+    const privacyAcknowledged = getCookie(PRIVACY_ACKNOWLEDGED_COOKIE_NAME) === 'true';
+    const apiKeyEncrypted = getCookie(API_KEY_ENCRYPTED_COOKIE_NAME); // Just check existence
+    const tourFinished = getCookie(TOUR_COOKIE_NAME) === 'true';
 
-  const handlePrivacyNoticeAcknowledge = () => {
-    if (typeof window !== 'undefined') {
-      setCookie(PRIVACY_ACKNOWLEDGED_COOKIE_NAME, 'true', 365);
-    }
-    setShowPrivacyNoticeDialog(false);
-    setIsPrivacyAcknowledged(true); // Signal that privacy is now acknowledged
+    if (!privacyAcknowledged) return 'privacy';
+    if (!apiKeyEncrypted) return 'apiKey'; // If privacy done, next is API key
+    if (!tourFinished) return 'tour'; // Then tour
+    return 'done';
   };
 
-  const handleFinishTour = () => {
-    if (typeof window !== 'undefined') {
-      setCookie(TOUR_COOKIE_NAME, 'true', 365);
-    }
-    setShowTour(false);
-  };
 
-  const handleApiKeySubmit = async (apiKey: string) => {
-    if (typeof window !== 'undefined') {
-      const encryptionResult = await encryptData(apiKey);
-      if (encryptionResult) {
-        setCookie(API_KEY_ENCRYPTED_COOKIE_NAME, encryptionResult.encryptedHex, 30);
-        setCookie(API_KEY_IV_COOKIE_NAME, encryptionResult.ivHex, 30);
-        setCookie(API_KEY_SALT_COOKIE_NAME, encryptionResult.saltHex, 30);
-        setUserApiKey(apiKey); 
-        setShowApiKeyDialog(false);
+  const handlePrivacyAcknowledged = () => {
+    setCookie(PRIVACY_ACKNOWLEDGED_COOKIE_NAME, 'true', 365);
+    // Check if API key needs to be entered next
+    const apiKeyEncrypted = getCookie(API_KEY_ENCRYPTED_COOKIE_NAME);
+    if (!apiKeyEncrypted) {
+      setCurrentOnboardingStep('apiKey');
+    } else {
+      // API key cookie exists, try to load it (or it was loaded by initial useEffect)
+      // Then check if tour is next
+      const tourFinished = getCookie(TOUR_COOKIE_NAME) === 'true';
+      if (!tourFinished) {
+        setCurrentOnboardingStep('tour');
       } else {
-        // This case should be handled by ApiKeyDialog's toast, but good to have a backup throw.
-        throw new Error("Encryption failed. Could not securely store the API key.");
+        setShowOnboardingDialog(false);
+        setCurrentOnboardingStep('done');
       }
     }
   };
 
+  const handleApiKeySubmitted = async (apiKey: string) => {
+    const encryptionResult = await encryptData(apiKey);
+    if (encryptionResult) {
+      setCookie(API_KEY_ENCRYPTED_COOKIE_NAME, encryptionResult.encryptedHex, 30);
+      setCookie(API_KEY_IV_COOKIE_NAME, encryptionResult.ivHex, 30);
+      setCookie(API_KEY_SALT_COOKIE_NAME, encryptionResult.saltHex, 30);
+      setUserApiKey(apiKey);
+      
+      const tourFinished = getCookie(TOUR_COOKIE_NAME) === 'true';
+      if (!tourFinished) {
+        setCurrentOnboardingStep('tour');
+      } else {
+        setShowOnboardingDialog(false);
+        setCurrentOnboardingStep('done');
+      }
+    } else {
+      throw new Error("Encryption failed. Could not securely store the API key.");
+    }
+  };
+  
+  const handleApiKeySkippedOrClosed = () => {
+    // If user skips API key, they can't use AI features.
+    // Transition to tour if not finished, otherwise close dialog.
+    const tourFinished = getCookie(TOUR_COOKIE_NAME) === 'true';
+    if (!tourFinished) {
+      setCurrentOnboardingStep('tour');
+    } else {
+      setShowOnboardingDialog(false);
+      setCurrentOnboardingStep('done');
+    }
+  };
+
+  const handleTourFinished = () => {
+    setCookie(TOUR_COOKIE_NAME, 'true', 365);
+    setShowOnboardingDialog(false);
+    setCurrentOnboardingStep('done');
+  };
+
+  const requestApiKeyEntry = () => {
+    // This function is called by MagicCanvasSection if an API key error occurs
+    clearApiCookiesAndResetState(); // This clears cookies, sets API key to null, and shows onboarding at API key step
+  };
+
+
+  if (!initialCheckComplete) {
+    return (
+      <div className="flex flex-col flex-grow h-full items-center justify-center">
+        {/* Optional: Add a loading spinner here */}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-grow h-full">
       <MagicCanvasSection 
         userApiKey={userApiKey} 
-        onInvalidApiKey={clearApiCookiesAndResetState} 
+        onInvalidApiKey={requestApiKeyEntry} 
       />
 
-      {/* Dialogs are rendered based on their respective show states */}
-      <PrivacyNoticeDialog
-        isOpen={showPrivacyNoticeDialog}
-        onAcknowledge={handlePrivacyNoticeAcknowledge}
-      />
-
-      {isPrivacyAcknowledged && isApiKeyChecked && ( 
-        <ApiKeyDialog
-          isOpen={showApiKeyDialog}
-          onClose={() => {
-            // If user closes API key dialog without submitting, 
-            // and no key is set, they can't use AI features.
-            // Consider if they should be forced or if closing is an acceptable "I don't have a key"
-            setShowApiKeyDialog(false) 
-          }}
-          onApiKeySubmit={handleApiKeySubmit}
+      {showOnboardingDialog && currentOnboardingStep !== 'done' && (
+        <OnboardingDialog
+          initialStep={currentOnboardingStep}
+          onPrivacyAcknowledged={handlePrivacyAcknowledged}
+          onApiKeySubmitted={handleApiKeySubmitted}
+          onApiKeySkipped={handleApiKeySkippedOrClosed} // Added for explicit skip/close
+          onTourFinished={handleTourFinished}
         />
-      )}
-      
-      {isPrivacyAcknowledged && isApiKeyChecked && !showApiKeyDialog && ( 
-          <AppTourDialog isOpen={showTour} onClose={handleFinishTour} />
       )}
     </div>
   );
