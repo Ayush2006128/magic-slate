@@ -10,9 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import { googleAI as googleAIPlugin } from '@genkit-ai/googleai';
-import type { ModelReference } from 'genkit/model';
-import {z, genkit} from 'genkit';
+import {z} from 'genkit';
 
 const EnhanceDoodleInputSchema = z.object({
   doodleDataUri: z
@@ -21,7 +19,6 @@ const EnhanceDoodleInputSchema = z.object({
       'A drawing as a data URI that must include a MIME type and use Base64 encoding. Expected format: data:<mimetype>;base64,<encoded_data>.'
     ),
   prompt: z.string().describe('A text prompt describing the desired artwork style.'),
-  userApiKey: z.string().optional().describe('Optional user-provided Google AI API key.'),
 });
 export type EnhanceDoodleInput = z.infer<typeof EnhanceDoodleInputSchema>;
 
@@ -33,37 +30,44 @@ const EnhanceDoodleOutputSchema = z.object({
 export type EnhanceDoodleOutput = z.infer<typeof EnhanceDoodleOutputSchema>;
 
 export async function enhanceDoodle(input: EnhanceDoodleInput): Promise<EnhanceDoodleOutput> {
-  let aiInstance = ai; // Default to global instance
-  const modelName = 'googleai/gemini-2.0-flash-exp';
-
-  if (input.userApiKey) {
-    try {
-      aiInstance = genkit({
-        plugins: [googleAIPlugin({ apiKey: input.userApiKey })],
-        model: modelName,
-      });
-    } catch (e) {
-      console.error("Failed to configure Google AI with user API key:", e);
-      // Fallback behavior: using global 'ai' instance
-      // If global 'ai' has no key, this will fail and be caught by MagicCanvasSection.
-    }
-  } else {
-    console.warn("enhanceDoodle called without a userApiKey. Relying on global Genkit config.");
-  }
-  
-  const {media} = await aiInstance.generate({
-    prompt: [
-      {media: {url: input.doodleDataUri}},
-      {text: `Enhance this doodle into a beautiful artwork with the following style: ${input.prompt}.`},
-    ],
-    config: {
-      responseModalities: ['TEXT', 'IMAGE'],
-    },
-  });
-
-  if (!media?.url) {
-    throw new Error('AI did not return an image. This could be due to safety filters or an issue with the API key.');
-  }
-
-  return {enhancedArtworkDataUri: media.url};
+  return enhanceDoodleFlow(input);
 }
+
+const enhanceDoodlePrompt = ai.definePrompt({
+  name: 'enhanceDoodlePrompt',
+  input: {schema: EnhanceDoodleInputSchema},
+  output: {schema: EnhanceDoodleOutputSchema},
+  prompt: [
+    {media: {url: '{{{doodleDataUri}}}'}},
+    {text: 'Enhance this doodle into a beautiful artwork with the following style: {{{prompt}}}.'},
+  ],
+  config: {
+    responseModalities: ['TEXT', 'IMAGE'],
+  },
+});
+
+const enhanceDoodleFlow = ai.defineFlow(
+  {
+    name: 'enhanceDoodleFlow',
+    inputSchema: EnhanceDoodleInputSchema,
+    outputSchema: EnhanceDoodleOutputSchema,
+  },
+  async input => {
+    const {media} = await ai.generate({
+      model: 'googleai/gemini-2.0-flash-exp',
+      prompt: [
+        {media: {url: input.doodleDataUri}},
+        {text: `Enhance this doodle into a beautiful artwork with the following style: ${input.prompt}.`},
+      ],
+      config: {
+        responseModalities: ['TEXT', 'IMAGE'],
+      },
+    });
+
+    if (!media) {
+      throw new Error('Failed to generate enhanced artwork');
+    }
+
+    return {enhancedArtworkDataUri: media.url};
+  }
+);

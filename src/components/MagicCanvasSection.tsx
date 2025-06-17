@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useCallback, useEffect, MutableRefObject } from 'react';
@@ -57,12 +56,7 @@ type Mode = 'doodle' | 'equation';
 const QUICK_COLOR_BLACK = '#000000';
 const QUICK_COLOR_RED = '#ff0000';
 
-interface MagicCanvasSectionProps {
-  userApiKey: string | null;
-  onInvalidApiKey: () => void; 
-}
-
-export function MagicCanvasSection({ userApiKey, onInvalidApiKey }: MagicCanvasSectionProps): JSX.Element {
+export function MagicCanvasSection(): JSX.Element {
   const [mode, setMode] = useState<Mode>('doodle');
   const [prompt, setPrompt] = useState('');
 
@@ -129,16 +123,6 @@ export function MagicCanvasSection({ userApiKey, onInvalidApiKey }: MagicCanvasS
   };
 
   const handleProcessCanvas = async () => {
-    if (!userApiKey) {
-      toast({
-        title: 'API Key Required',
-        description: 'Please enter your Google AI API key to use AI features.',
-        variant: 'destructive',
-      });
-      onInvalidApiKey(); 
-      return;
-    }
-
     triggerHapticFeedback();
     const canvasDataUri = getCanvasDataUrlRef.current
       ? getCanvasDataUrlRef.current()
@@ -229,7 +213,6 @@ export function MagicCanvasSection({ userApiKey, onInvalidApiKey }: MagicCanvasS
         const enhanceInput: EnhanceDoodleInput = {
           doodleDataUri: canvasDataUri,
           prompt: currentPrompt,
-          userApiKey: userApiKey,
         };
         const enhanceOutput = await enhanceDoodle(enhanceInput);
         setCurrentEnhancedArtworkUri(enhanceOutput.enhancedArtworkDataUri);
@@ -240,7 +223,6 @@ export function MagicCanvasSection({ userApiKey, onInvalidApiKey }: MagicCanvasS
       } else if (mode === 'equation') {
         const solveInput: SolveEquationInput = {
           equationImageDataUri: canvasDataUri,
-          userApiKey: userApiKey,
         };
         const solveOutput = await solveEquation(solveInput);
         setCurrentSolution(solveOutput);
@@ -252,34 +234,13 @@ export function MagicCanvasSection({ userApiKey, onInvalidApiKey }: MagicCanvasS
       setIsOutputDialogOpen(true);
     } catch (error) {
       console.error('Error processing canvas:', error);
-      const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
-      
-      const isApiKeyError = 
-        errorMessage.includes('api key') || 
-        errorMessage.includes('permission denied') || 
-        errorMessage.includes('unauthenticated') ||
-        errorMessage.includes('quota') ||
-        errorMessage.includes('access token') ||
-        errorMessage.includes('forbidden') ||
-        (error instanceof Error && typeof (error as any).status === 'number' && [(error as any).status].includes(401)) ||
-        (error instanceof Error && typeof (error as any).status === 'number' && [(error as any).status].includes(403));
-
-      if (isApiKeyError) {
-        toast({
-          title: 'API Key Error',
-          description: 'There was an issue with your API key. Please re-enter it.',
-          variant: 'destructive',
-        });
-        onInvalidApiKey();
-      } else {
-        toast({
-          title: 'Error Processing Canvas',
-          description: `Could not process. ${
-            error instanceof Error ? error.message : 'Please try again.'
-          }`,
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Error Processing Canvas',
+        description: `Could not process. ${
+          error instanceof Error ? error.message : 'Please try again.'
+        }`,
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }

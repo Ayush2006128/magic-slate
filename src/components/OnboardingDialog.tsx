@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
@@ -12,31 +11,23 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, KeyRound, Wand2, Palette, Calculator, Sparkles, Eraser, Settings, PencilLine, FileText, Loader2 } from 'lucide-react';
+import { ShieldCheck, Wand2, Palette, Calculator, Sparkles, Eraser, Settings, PencilLine, FileText, Loader2 } from 'lucide-react';
 
-export type OnboardingStep = 'privacy' | 'apiKey' | 'tour';
+export type OnboardingStep = 'privacy' | 'tour';
 
 interface OnboardingDialogProps {
   initialStep: OnboardingStep;
   onPrivacyAcknowledged: () => void;
-  onApiKeySubmitted: (apiKey: string) => Promise<void>;
-  onApiKeySkipped: () => void;
   onTourFinished: () => void;
 }
 
 export function OnboardingDialog({
   initialStep,
   onPrivacyAcknowledged,
-  onApiKeySubmitted,
-  onApiKeySkipped,
   onTourFinished,
 }: OnboardingDialogProps) {
   const [currentStep, setCurrentStep] = useState<OnboardingStep>(initialStep);
-  const [apiKeyInputValue, setApiKeyInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -55,42 +46,6 @@ export function OnboardingDialog({
     setIsLoading(false);
   };
 
-  const handleApiKeySubmitInternal = async () => {
-    if (!apiKeyInputValue.trim()) {
-      toast({
-        title: 'API Key Required',
-        description: 'Please enter your Google AI API key.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    setIsLoading(true);
-    try {
-      await onApiKeySubmitted(apiKeyInputValue.trim());
-      toast({
-        title: 'API Key Saved',
-        description: 'Your API key has been securely stored for this session.',
-      });
-      // Parent will set new step to 'tour' or 'done'
-    } catch (error) {
-      toast({
-        title: 'Error Saving API Key',
-        description: error instanceof Error ? error.message : 'Could not save the API key. Please try again.',
-        variant: 'destructive',
-      });
-      console.error("Error submitting API key:", error);
-    } finally {
-      setIsLoading(false);
-      setApiKeyInputValue('');
-    }
-  };
-  
-  const handleApiKeySkipInternal = () => {
-    onApiKeySkipped();
-    // Parent will set new step to 'tour' or 'done'
-  };
-
-
   const handleTourFinishInternal = () => {
     setIsLoading(true);
     onTourFinished();
@@ -105,7 +60,6 @@ export function OnboardingDialog({
       case 'privacy':
         return {
           title: 'Important: Privacy & Data',
-          icon: <ShieldCheck className="h-6 w-6 text-primary" />,
           content: (
             <div key="privacy-content" className={animationWrapperClasses}>
               <DialogDescription className="mb-4">
@@ -138,56 +92,9 @@ export function OnboardingDialog({
             </Button>
           ),
         };
-      case 'apiKey':
-        return {
-          title: 'Enter Your Google AI API Key',
-          icon: <KeyRound className="h-5 w-5 text-primary" />,
-          description: "To use AI features, provide your Google AI API key. It'll be stored encrypted in your browser's cookies.",
-          content: (
-            <div key="apiKey-content" className={`${animationWrapperClasses} space-y-4`}>
-              <div>
-                <Label htmlFor="onboarding-apiKey">Google AI API Key</Label>
-                <Input
-                  id="onboarding-apiKey"
-                  type="password"
-                  value={apiKeyInputValue}
-                  onChange={(e) => setApiKeyInputValue(e.target.value)}
-                  placeholder="Enter your API key"
-                  disabled={isLoading}
-                  className="mt-1"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Get a key from{' '}
-                  <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="underline text-primary">
-                    Google AI Studio
-                  </a>.
-                </p>
-              </div>
-              <Alert variant="destructive">
-                <ShieldCheck className="h-4 w-4" />
-                <AlertTitle>Security Note</AlertTitle>
-                <AlertDescription className="text-xs">
-                  Storing API keys in browser cookies, even encrypted, has risks (e.g., XSS). For production, consider server-side key management. By proceeding, you acknowledge this risk.
-                </AlertDescription>
-              </Alert>
-            </div>
-          ),
-          footer: (
-            <div className="flex flex-col sm:flex-row gap-2 w-full">
-              <Button variant="outline" onClick={handleApiKeySkipInternal} className="w-full sm:w-auto" disabled={isLoading}>
-                Skip for Now
-              </Button>
-              <Button onClick={handleApiKeySubmitInternal} className="w-full sm:flex-1" disabled={isLoading || !apiKeyInputValue.trim()}>
-                {isLoading ? <Loader2 className="animate-spin mr-2" /> : null}
-                Save API Key
-              </Button>
-            </div>
-          ),
-        };
       case 'tour':
         return {
           title: 'Welcome to Magic Slate!',
-          icon: <Wand2 className="h-6 w-6 text-primary" />,
           description: "Discover how Magic Slate can transform your ideas with AI.",
           content: (
              <div key="tour-content" className={`${animationWrapperClasses} space-y-5 text-sm`}>
@@ -250,7 +157,7 @@ export function OnboardingDialog({
     }
   };
 
-  const { title, icon, description, content, footer } = getStepConfig();
+  const { title, description, content, footer } = getStepConfig();
 
   // Dialog is always open in terms of its own state; parent controls its mounting.
   // We don't want the dialog to self-close, parent should unmount it.
@@ -259,7 +166,6 @@ export function OnboardingDialog({
       <DialogContent className="sm:max-w-md md:max-w-lg max-h-[90vh] flex flex-col gap-0 p-0">
         <DialogHeader className="p-6 pb-4 flex-shrink-0 border-b">
           <DialogTitle className="text-2xl flex items-center gap-2 font-headline">
-            {icon}
             {title}
           </DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
