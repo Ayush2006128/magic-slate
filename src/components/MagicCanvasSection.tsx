@@ -39,6 +39,7 @@ import {
   TooltipProvider,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useMode } from '@/app/slate/layout';
 
 import type {
   EnhanceDoodleInput,
@@ -51,13 +52,11 @@ import type {
 } from '@/ai/flows/solve-equation';
 import { solveEquation } from '@/ai/flows/solve-equation';
 
-type Mode = 'doodle' | 'equation';
-
 const QUICK_COLOR_BLACK = '#000000';
 const QUICK_COLOR_RED = '#ff0000';
 
 export function MagicCanvasSection(): JSX.Element {
-  const [mode, setMode] = useState<Mode>('doodle');
+  const { mode } = useMode();
   const [prompt, setPrompt] = useState('');
 
   const [currentEnhancedArtworkUri, setCurrentEnhancedArtworkUri] =
@@ -95,17 +94,6 @@ export function MagicCanvasSection(): JSX.Element {
     setCurrentEnhancedArtworkUri(null);
     setCurrentOriginalDoodleDataUrl(null);
     setCurrentSolution(null);
-  };
-
-  const handleModeChange = (newMode: Mode) => {
-    setMode(newMode);
-    resetLocalOutputs();
-    toast({
-      title: 'Mode Switched',
-      description: `Switched to ${
-        newMode === 'doodle' ? 'Doodle' : 'Equation'
-      } Mode.`,
-    });
   };
 
   const handleCanvasClearRequest = () => {
@@ -268,34 +256,6 @@ export function MagicCanvasSection(): JSX.Element {
   return (
     <TooltipProvider>
       <div className="relative w-full h-full flex flex-col overflow-hidden">
-        {/* Mode Selector - Top Bar */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 p-2 bg-background/80 backdrop-blur-sm shadow-sm rounded-b-lg z-20">
-          <RadioGroup
-            value={mode}
-            onValueChange={(value) => handleModeChange(value as Mode)}
-            className="flex gap-2 items-center"
-          >
-            <div className="flex items-center space-x-1">
-              <RadioGroupItem value="doodle" id="r-doodle-fab" />
-              <Label
-                htmlFor="r-doodle-fab"
-                className="text-sm flex items-center gap-1 cursor-pointer"
-              >
-                <PaletteIcon size={16} /> Doodle
-              </Label>
-            </div>
-            <div className="flex items-center space-x-1">
-              <RadioGroupItem value="equation" id="r-equation-fab" />
-              <Label
-                htmlFor="r-equation-fab"
-                className="text-sm flex items-center gap-1 cursor-pointer"
-              >
-                <Calculator size={16} /> Equation
-              </Label>
-            </div>
-          </RadioGroup>
-        </div>
-
         {/* Canvas Area */}
         <div className="flex-grow relative">
           <DoodleCanvas

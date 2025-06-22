@@ -1,11 +1,6 @@
 import type { Metadata } from 'next';
 import {
   ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
 } from "@clerk/nextjs";
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
@@ -36,15 +31,6 @@ export default function RootLayout({
           <meta name="theme-color" content="#000000" />
         </head>
         <body className="font-body antialiased h-full flex flex-col bg-background">
-          <header>
-            <SignedOut>
-              <SignInButton />
-              <SignUpButton />
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-          </header>
           {children}
           <Toaster />
         </body>
