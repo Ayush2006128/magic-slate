@@ -5,12 +5,14 @@ import {
   SignUpButton,
   SignedIn,
   SignedOut,
-  UserButton,
+  useUser,
 } from "@clerk/nextjs";
 import { useState, createContext, useContext } from "react";
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Palette as PaletteIcon, Calculator } from 'lucide-react';
+import { Palette as PaletteIcon, Calculator, User, LogOut } from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type Mode = 'doodle' | 'equation';
 
@@ -35,6 +37,7 @@ export default function SlateLayout({
   children: React.ReactNode;
 }) {
   const [mode, setMode] = useState<Mode>('doodle');
+  const { user } = useUser();
 
   return (
     <ModeContext.Provider value={{ mode, setMode }}>
@@ -86,7 +89,43 @@ export default function SlateLayout({
               </SignUpButton>
             </SignedOut>
             <SignedIn>
-              <UserButton />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Avatar>
+                    <AvatarImage src={user?.imageUrl || undefined} />
+                    <AvatarFallback>
+                      {user?.emailAddresses?.[0]?.emailAddress?.[0]?.toUpperCase() || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <button
+                      className="w-full text-left text-sm text-muted-foreground hover:text-bold transition-colors"
+                      onClick={() => {
+                        if (typeof window !== "undefined" && (window as any).Clerk?.openUserProfile) {
+                          (window as any).Clerk.openUserProfile();
+                        }
+                      }}
+                    >
+                      <User />
+                      View Profile
+                    </button>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <button
+                      className="w-full flex items-center gap-2 text-left text-sm text-muted-foreground hover:text-bold transition-colors"
+                      onClick={async () => {
+                        if (typeof window !== "undefined" && (window as any).Clerk?.signOut) {
+                          await (window as any).Clerk.signOut();
+                        }
+                      }}>
+                        <LogOut className="w-4 h-4" />
+                        Log out
+                      </button>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </SignedIn>
           </div>
         </div>
