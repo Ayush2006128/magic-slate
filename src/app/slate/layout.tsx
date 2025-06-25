@@ -48,7 +48,7 @@ export default function SlateLayout({
           </div>
           
           {/* Mode Selector */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pl-4 pr-4">
             <RadioGroup
               value={mode}
               onValueChange={(value) => setMode(value as Mode)}
