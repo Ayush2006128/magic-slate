@@ -26,7 +26,6 @@ import {
   PencilLine,
   Wand2,
 } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Popover,
   PopoverContent,
@@ -40,6 +39,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useMode } from '@/app/slate/layout';
+import ReactMarkdown from 'react-markdown';
 
 import type {
   EnhanceDoodleInput,
@@ -538,9 +538,9 @@ export function MagicCanvasSection(): JSX.Element {
                       </span>
                     </DialogDescription>
                   )}
-                  <p className="text-lg font-medium text-primary bg-secondary p-3 rounded-md whitespace-pre-wrap">
-                    {currentSolution.solution}
-                  </p>
+                  <div className="text-lg font-medium text-primary bg-secondary p-3 rounded-md whitespace-pre-wrap">
+                    <ReactMarkdown>{currentSolution.solution}</ReactMarkdown>
+                  </div>
                   {currentSolution.sourceUrls && currentSolution.sourceUrls.length > 0 && (
                     <div className="mt-4 pt-4 border-t">
                       <h4 className="text-sm font-medium text-muted-foreground mb-2">
