@@ -19,8 +19,31 @@ interface PricingService {
     hasWizardPro: boolean;
 };
 
-export const pricingService: PricingService = {
-    hasLittleWizard,
-    hasWizard,
-    hasWizardPro
+export const pricingService = async (): Promise<PricingService> => {
+    if (await hasLittleWizard) {
+        return {
+            hasLittleWizard: true,
+            hasWizard: false,
+            hasWizardPro: false
+        };
+    }
+    if (await hasWizard) {
+        return {
+            hasLittleWizard: false,
+            hasWizard: true,
+            hasWizardPro: false
+        };
+    }
+    if (await hasWizardPro) {
+        return {
+            hasLittleWizard: false,
+            hasWizard: false,
+            hasWizardPro: true
+        };
+    }
+    return {
+        hasLittleWizard: false,
+        hasWizard: false,
+        hasWizardPro: false
+    };
 };

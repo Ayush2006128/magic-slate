@@ -4,7 +4,20 @@ export default function PricingPage() {
   return (
     <div className="flex flex-col items-center justify-center h-screen">
         <h1 className="text-4xl font-bold mb-5">Pricing</h1>
-      <PricingTable />
+      <div className="w-full max-w-7xl pl-5 pr-5">
+        <PricingTable collapseFeatures={true} appearance={{
+          elements: {
+            card: {
+              backgroundColor: "#FF",
+              borderRadius: "10px"
+            },
+            button: {
+              backgroundColor: "#E62D9A",
+              borderRadius: "10px"
+            }
+          }
+        }}/>
+      </div>
     </div>
   );
 }

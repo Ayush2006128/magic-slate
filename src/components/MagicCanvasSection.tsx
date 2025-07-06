@@ -40,6 +40,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useMode } from '@/app/slate/layout';
 import ReactMarkdown from 'react-markdown';
+import { useRouter } from 'next/navigation';
 
 import type {
   EnhanceDoodleInput,
@@ -79,6 +80,10 @@ export function MagicCanvasSection(): JSX.Element {
   const setGetCanvasDataUrl = useCallback((callback: () => string | null) => {
     getCanvasDataUrlRef.current = callback;
   }, []);
+
+  const router = useRouter();
+  const [isCreditsModalOpen, setIsCreditsModalOpen] = useState(false);
+  const [creditsType, setCreditsType] = useState<'doodle' | 'equation'>('doodle');
 
   const triggerHapticFeedback = (pattern: VibratePattern = 50) => {
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -124,6 +129,38 @@ export function MagicCanvasSection(): JSX.Element {
       });
       return;
     }
+
+    // --- CREDIT CHECK LOGIC ---
+    let creditType: 'doodle' | 'equation' = mode;
+    setCreditsType(creditType);
+    let creditsRes;
+    try {
+      creditsRes = await fetch('/api/credits');
+      if (!creditsRes.ok) throw new Error('Could not fetch credits');
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Could not check credits. Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const credits = await creditsRes.json();
+    const used = creditType === 'doodle' ? credits.doodleUsed : credits.equationUsed;
+    const limit = creditType === 'doodle' ? credits.doodleLimit : credits.equationLimit;
+    const left = limit === Infinity ? Infinity : limit - used;
+    if (limit !== Infinity && left <= 0) {
+      setIsCreditsModalOpen(true);
+      return;
+    }
+    if (limit !== Infinity && left <= 5) {
+      toast({
+        title: 'Low Credits',
+        description: `You have only ${left} ${creditType === 'doodle' ? 'doodle' : 'equation'} credits left this month.`,
+        variant: 'warning',
+      });
+    }
+    // --- END CREDIT CHECK LOGIC ---
 
     const img = new window.Image();
     img.src = canvasDataUri;
@@ -578,6 +615,31 @@ export function MagicCanvasSection(): JSX.Element {
                 onClick={() => setIsOutputDialogOpen(false)}
               >
                 Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Credits Exhausted Modal */}
+        <Dialog open={isCreditsModalOpen} onOpenChange={setIsCreditsModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Credits Exhausted</DialogTitle>
+            </DialogHeader>
+            <div className="py-4 text-center">
+              <p className="text-lg font-semibold mb-2">You have used all your {creditsType} credits for this month.</p>
+              <p className="text-muted-foreground mb-4">Come back after one month or upgrade your plan for more credits.</p>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="default"
+                onClick={() => {
+                  setIsCreditsModalOpen(false);
+                  router.push('/pricing');
+                }}
+                className="w-full"
+              >
+                Upgrade Plan
               </Button>
             </DialogFooter>
           </DialogContent>
