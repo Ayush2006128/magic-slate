@@ -157,7 +157,7 @@ export function MagicCanvasSection(): JSX.Element {
       toast({
         title: 'Low Credits',
         description: `You have only ${left} ${creditType === 'doodle' ? 'doodle' : 'equation'} credits left this month.`,
-        variant: 'warning',
+        variant: 'default',
       });
     }
     // --- END CREDIT CHECK LOGIC ---

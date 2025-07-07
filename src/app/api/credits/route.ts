@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Get plan from pricingService
-  const planInfo = await pricingService();
+  const planInfo = await pricingService(userId);
   let plan = 'free';
   if (planInfo.hasWizardPro) plan = 'wizard_pro';
   else if (planInfo.hasWizard) plan = 'wizard';

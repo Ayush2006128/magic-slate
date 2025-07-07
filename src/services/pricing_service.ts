@@ -1,17 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-
-const {has} =  await auth();
-const hasLittleWizard = has({
-    plan: "little_wizard"
-});
-
-const hasWizard = has({
-    plan: "wizard"
-});
-
-const hasWizardPro = has({
-    plan: "wizard_pro"
-});
+import { prisma } from '@/lib/prisma';
 
 interface PricingService {
     hasLittleWizard: boolean;
@@ -19,31 +6,12 @@ interface PricingService {
     hasWizardPro: boolean;
 };
 
-export const pricingService = async (): Promise<PricingService> => {
-    if (await hasLittleWizard) {
-        return {
-            hasLittleWizard: true,
-            hasWizard: false,
-            hasWizardPro: false
-        };
-    }
-    if (await hasWizard) {
-        return {
-            hasLittleWizard: false,
-            hasWizard: true,
-            hasWizardPro: false
-        };
-    }
-    if (await hasWizardPro) {
-        return {
-            hasLittleWizard: false,
-            hasWizard: false,
-            hasWizardPro: true
-        };
-    }
+export const pricingService = async (userId: string): Promise<PricingService> => {
+    const userCredits = await prisma.userCredits.findUnique({ where: { userId } });
+    const plan = userCredits?.plan || 'free';
     return {
-        hasLittleWizard: false,
-        hasWizard: false,
-        hasWizardPro: false
+        hasLittleWizard: plan === 'little_wizard',
+        hasWizard: plan === 'wizard',
+        hasWizardPro: plan === 'wizard_pro',
     };
 };
