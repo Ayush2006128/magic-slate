@@ -12,7 +12,23 @@ const PLAN_LIMITS = {
 
 export type CreditType = 'doodle' | 'equation';
 
+// Helper function to validate authentication
+async function validateAuth(userId: string): Promise<boolean> {
+  try {
+    const { userId: authUserId } = await auth();
+    return authUserId === userId && !!authUserId;
+  } catch (error) {
+    return false;
+  }
+}
+
 async function getOrCreateUserCredits(userId: string, plan: string) {
+  // Validate authentication before proceeding
+  const isAuthenticated = await validateAuth(userId);
+  if (!isAuthenticated) {
+    throw new Error('Unauthorized: User must be authenticated to access credits');
+  }
+
   let userCredits = await prisma.userCredits.findUnique({ where: { userId } });
   if (!userCredits) {
     userCredits = await prisma.userCredits.create({
@@ -33,6 +49,12 @@ function getPlanLimits(plan: string) {
 }
 
 export async function checkAndResetCredits(userId: string, plan: string) {
+  // Validate authentication before proceeding
+  const isAuthenticated = await validateAuth(userId);
+  if (!isAuthenticated) {
+    throw new Error('Unauthorized: User must be authenticated to access credits');
+  }
+
   let userCredits = await getOrCreateUserCredits(userId, plan);
   const now = new Date();
   // Reset if a month has passed since lastReset
@@ -57,6 +79,12 @@ export async function checkAndResetCredits(userId: string, plan: string) {
 }
 
 export async function canUseCredit(userId: string, plan: string, type: CreditType) {
+  // Validate authentication before proceeding
+  const isAuthenticated = await validateAuth(userId);
+  if (!isAuthenticated) {
+    throw new Error('Unauthorized: User must be authenticated to access credits');
+  }
+
   const userCredits = await checkAndResetCredits(userId, plan);
   const limits = getPlanLimits(plan);
   if (limits[type] === Infinity) return true;
@@ -66,6 +94,12 @@ export async function canUseCredit(userId: string, plan: string, type: CreditTyp
 }
 
 export async function incrementCredit(userId: string, plan: string, type: CreditType) {
+  // Validate authentication before proceeding
+  const isAuthenticated = await validateAuth(userId);
+  if (!isAuthenticated) {
+    throw new Error('Unauthorized: User must be authenticated to access credits');
+  }
+
   await checkAndResetCredits(userId, plan);
   if (type === 'doodle') {
     await prisma.userCredits.update({
@@ -82,6 +116,12 @@ export async function incrementCredit(userId: string, plan: string, type: Credit
 
 // Helper to get current usage and limits for UI
 export async function getUserCreditStatus(userId: string, plan: string) {
+  // Validate authentication before proceeding
+  const isAuthenticated = await validateAuth(userId);
+  if (!isAuthenticated) {
+    throw new Error('Unauthorized: User must be authenticated to access credits');
+  }
+
   const userCredits = await checkAndResetCredits(userId, plan);
   const limits = getPlanLimits(plan);
   return {

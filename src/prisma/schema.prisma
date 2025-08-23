@@ -17,5 +17,19 @@ model UserCredits {
   lastReset      DateTime // Last time credits were reset
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  // RLS policies - these will be applied via Supabase
+  @@map("UserCredits")
 }
+
+// Add this comment block for Supabase RLS policies
+// Enable RLS: ALTER TABLE "UserCredits" ENABLE ROW LEVEL SECURITY;
+// 
+// Policy for authenticated users to only access their own data:
+// CREATE POLICY "Users can only access their own credits" ON "UserCredits"
+//   FOR ALL USING (auth.uid()::text = "userId");
+// 
+// Policy to prevent unauthenticated access:
+// CREATE POLICY "No anonymous access" ON "UserCredits"
+//   FOR ALL USING (auth.role() = 'authenticated');
         

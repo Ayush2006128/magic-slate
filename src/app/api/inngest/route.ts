@@ -1,12 +1,21 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/inngest/client";
-import { helloWorld } from "@/inngest/functions";
+import {
+  handleUserAuth,
+  handleCreditCheck,
+  handlePaymentSuccess,
+  handleEnhanceDoodle,
+  handleSolveEquation,
+} from "@/inngest/functions";
 
-// Create an API that serves zero functions
+// Register all Inngest workflows
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
-    /* your functions will be passed here later! */
-    helloWorld,
+    handleUserAuth,
+    handleCreditCheck,
+    handlePaymentSuccess,
+    handleEnhanceDoodle,
+    handleSolveEquation,
   ],
 });
